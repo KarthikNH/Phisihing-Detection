@@ -31,28 +31,20 @@ CYBER_RED = '#ff2a5f'
 CYBER_GREEN = '#00ff88'
 CYBER_ORANGE = '#ff9900'
 
-# Diverse, realistic benign web path templates covering standard web architectures
-BENIGN_PATH_TEMPLATES = [
+# Diverse, realistic benign web path templates covering real-world web architectures
+BENIGN_SHORT_PATHS = [
     "", # Clean root domain
     "/about", "/about/team", "/contact", "/contact-us", "/privacy-policy", "/terms-of-service",
-    "/help/center", "/faq", "/support/kb/articles/102938", "/docs/v2/getting-started",
-    "/blog/2026/03/machine-learning-advances-and-applications",
-    "/news/article/global-technology-trends-and-updates-2026",
+    "/help/center", "/faq", "/pricing", "/features", "/docs/v2/getting-started", "/blog", "/news"
+]
+
+BENIGN_MEDIUM_PATHS = [
     "/products/electronics/catalog/item?id=8392104&category=smartphones",
     "/browse/category/items?page=2&sort=popular&view=grid",
-    "/search?q=machine+learning+phishing+detection+benchmark&hl=en&start=10",
-    "/watch?v=k39d8x90q84&feature=share&t=45s",
-    "/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
-    "/wiki/Phishing_detection_using_machine_learning_techniques_and_heuristics",
-    "/wiki/Distributed_systems_consensus_protocols_and_algorithms",
     "/title/80057281?trackId=14170286&ref_=tt_ov_inf",
     "/title/70143836?trackId=200257858",
     "/show/10293847?id=92837465&season=2",
-    "/item/9837482910?vendor=10293&code=84920",
-    "/video/839201948?session=92837491",
-    "/media/stream/1829471029?quality=1080p",
-    "/catalog/product/491829410294?variant=black",
-    "/order/history/2026/839201948102",
+    "/watch?v=k39d8x90q84&feature=share&t=45s",
     "/dp/B09G9HD6PD?ref_=Oct_DLandingS_D_123_456&th=1",
     "/blob/master/include/linux/compiler_attributes.h",
     "/tree/main/src/components/dashboard/analytics",
@@ -62,8 +54,31 @@ BENIGN_PATH_TEMPLATES = [
     "/recipes/desserts/classic-triple-chocolate-cake-recipe?servings=8",
     "/events/annual-developer-summit-2026/schedule-and-speakers",
     "/catalog/books/science-fiction/1849204918294?format=hardcover",
-    "/status/1498273928172639102"
+    "/status/1498273928172639102",
+    "/item/9837482910?vendor=10293&code=84920",
+    "/video/839201948?session=92837491",
+    "/media/stream/1829471029?quality=1080p"
 ]
+
+BENIGN_LONG_PATHS = [
+    "/search?q=machine+learning+in+cybersecurity+and+phishing+detection+benchmarks&oq=machine+learning&aqs=chrome..69i57j0i512l9.3401j0j7&sourceid=chrome&ie=UTF-8",
+    "/search?q=deep+neural+network+architectures+for+natural+language+processing&hl=en&gl=us&start=20&filter=true&source=hp",
+    "/Apple-MacBook-16-inch-512GB-Storage/dp/B08N5M7S6K/ref=sr_1_1?dchild=1&keywords=macbook&qid=1608123456&sr=8-1",
+    "/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array?rq=1&newreg=839210",
+    "/wiki/Phishing_detection_using_machine_learning_techniques_and_heuristics_for_web_applications",
+    "/wiki/Distributed_systems_consensus_protocols_and_algorithms_in_modern_cloud_platforms",
+    "/commit/a1b2c3d4e5f67890abcdef1234567890abcdef12?diff=unified&w=1",
+    "/document/d/1234567890abcdefghijklmnopqrstuvwxyz-1234567890/edit?usp=sharing&ouid=1029384756&rtpof=true",
+    "/ip/Apple-iPhone-12-64GB-Black-Fully-Unlocked-B-Grade-Refurbished/839201948?wmlspartner=wlpa&selectedSellerId=10100293&adid=222222",
+    "/feed/update/urn:li:activity:7123456789012345678?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA1234",
+    "/technology/2026/09/04/artificial-intelligence-regulation-guidelines-and-cybersecurity-standards.html?utm_source=newsletter&utm_medium=email",
+    "/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&t=4s&ab_channel=OfficialArtistChannel",
+    "/track/4cOdK2wGLETKBW3PvgPWqT?si=22839218391283&context=spotify%3Aplaylist%3A37i9dQZF1DXcBWIGoYBM5M",
+    "/r/MachineLearning/comments/1234567/discussion_how_to_prevent_model_overfitting_on_url_length/?utm_source=share&utm_medium=web2x&context=3",
+    "/story/financial-markets-and-economic-indicators-quarterly-review-2026-analysis.html?ref=frontpage&view=full"
+]
+
+ALL_BENIGN_TEMPLATES = BENIGN_SHORT_PATHS + BENIGN_MEDIUM_PATHS + BENIGN_LONG_PATHS
 
 def preprocess_and_extract(df_raw, max_samples=50000):
     """
@@ -101,11 +116,25 @@ def preprocess_and_extract(df_raw, max_samples=50000):
         target = 0 if lbl == 1 else 1 # 0 = Legitimate, 1 = Phishing
         
         # In the raw dataset, 100% of legitimate URLs are bare root domains.
-        # Augment ~45% of legitimate URLs with realistic benign web paths
-        # so the model learns that deep paths and queries are standard web structures.
-        if lbl == 1 and random.random() < 0.45:
-            u_base = u.rstrip('/')
-            u = u_base + random.choice(BENIGN_PATH_TEMPLATES)
+        # Augment ~75% of legitimate URLs across short, medium, and long complex web paths
+        # so the model learns that length and query parameters are standard web conventions.
+        if lbl == 1:
+            aug_roll = random.random()
+            if aug_roll < 0.25:
+                # 25% keep clean root domain
+                pass
+            elif aug_roll < 0.50:
+                # 25% short paths
+                u_base = u.rstrip('/')
+                u = u_base + random.choice(BENIGN_SHORT_PATHS)
+            elif aug_roll < 0.75:
+                # 25% medium paths with parameters
+                u_base = u.rstrip('/')
+                u = u_base + random.choice(BENIGN_MEDIUM_PATHS)
+            else:
+                # 25% long complex web paths / search queries / doc links (120 - 320+ chars)
+                u_base = u.rstrip('/')
+                u = u_base + random.choice(BENIGN_LONG_PATHS)
             
         urls.append(u)
         y.append(target)
@@ -170,8 +199,9 @@ def train_and_evaluate():
     # 3. Calibrated XGBoost Classifier
     print("Training and Calibrating XGBoost Classifier...")
     base_xgb = XGBClassifier(
-        n_estimators=120, max_depth=5, learning_rate=0.06, 
-        colsample_bytree=0.8, subsample=0.8,
+        n_estimators=130, max_depth=4, learning_rate=0.06, 
+        min_child_weight=3, gamma=0.2, reg_alpha=0.5, reg_lambda=1.5,
+        colsample_bytree=0.75, subsample=0.8,
         eval_metric='logloss', random_state=42, n_jobs=-1
     )
     calibrated_xgb = CalibratedClassifierCV(estimator=base_xgb, method='sigmoid', cv=5)

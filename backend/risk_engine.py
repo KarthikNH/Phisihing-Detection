@@ -6,6 +6,18 @@ import pandas as pd
 from urllib.parse import urlparse
 from backend.feature_extractor import extract_url_features
 
+VERIFIED_DOMAINS = {
+    'google.com', 'google.co.in', 'google.co.uk', 'google.ca', 'google.de', 'google.fr', 'google.com.au',
+    'youtube.com', 'youtu.be', 'gmail.com', 'gstatic.com', 'googleusercontent.com',
+    'microsoft.com', 'live.com', 'office.com', 'bing.com', 'github.com', 'githubusercontent.com', 'linkedin.com',
+    'amazon.com', 'amazon.in', 'amazon.co.uk', 'amazon.de', 'amazon.co.jp', 'aws.amazon.com',
+    'apple.com', 'icloud.com',
+    'wikipedia.org', 'wikimedia.org',
+    'netflix.com', 'spotify.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'whatsapp.com',
+    'reddit.com', 'stackoverflow.com', 'stackexchange.com', 'nytimes.com', 'medium.com', 'walmart.com', 'zoom.us',
+    'python.org', 'cloudflare.com', 'mozilla.org', 'w3.org'
+}
+
 class PhishGuardRiskEngine:
     def __init__(self, models_dir='models'):
         self.models_dir = models_dir
@@ -54,6 +66,7 @@ class PhishGuardRiskEngine:
         url_clean = str(url).strip()
         parsed = urlparse(url_clean if '://' in url_clean else 'https://' + url_clean)
         domain_name = (parsed.netloc or parsed.path.split('/')[0]).lower().split(':')[0]
+        domain_clean = domain_name.lstrip('www.')
         
         # 1. Canonical Feature Extraction
         features = extract_url_features(url_clean)
@@ -68,13 +81,31 @@ class PhishGuardRiskEngine:
         prediction = 1 if phishing_probability >= 0.5 else 0
         
         # 3. Anomaly Detection (Isolation Forest)
-        # Raw decision score: positive = normal, negative = anomalous.
-        # Normalize to 0.0 - 1.0 scale (0.0 = completely normal, 1.0 = highly anomalous)
         raw_iso_score = float(self.anomaly_detector.decision_function(input_vector)[0])
         raw_anomaly = (0.15 - raw_iso_score) / 0.35
         anomaly_score = float(max(0.0, min(1.0, raw_anomaly)))
         
-        # 4. Heuristic Penalty Calculation & Reasons Generation
+        # 4. Verified Domain Integrity Check
+        # Check if URL host is an authenticated high-reputation domain without host tampering
+        has_host_tampering = (
+            features.get('IsDomainIP', 0) == 1 or
+            features.get('HasAtSymbol', 0) == 1 or
+            features.get('HasDoubleSlashInPath', 0) == 1 or
+            features.get('IsSuspiciousTLD', 0) == 1 or
+            features.get('SuspiciousKeywordInDomain', 0) > 0
+        )
+        is_verified_domain = (
+            not has_host_tampering and 
+            any(domain_clean == vd or domain_clean.endswith('.' + vd) for vd in VERIFIED_DOMAINS)
+        )
+        
+        if is_verified_domain:
+            # Genuine verified domain: calibrate away false positive long-URL path/query inflation
+            phishing_probability = min(phishing_probability, 0.08)
+            prediction = 0
+            anomaly_score = min(anomaly_score, 0.25)
+            
+        # 5. Heuristic Penalty Calculation & Reasons Generation
         reasons = []
         heuristic_penalty = 0.0
         
@@ -99,9 +130,9 @@ class PhishGuardRiskEngine:
         if features.get('SuspiciousKeywordInDomain', 0) > 0:
             reasons.append(f"Contains security/credential keyword directly inside domain name ({int(features['SuspiciousKeywordInDomain'])})")
             heuristic_penalty += 35
-        elif features.get('SuspiciousKeywordCount', 0) > 0:
+        elif features.get('SuspiciousKeywordCount', 0) > 0 and not is_verified_domain:
             reasons.append(f"Contains {int(features['SuspiciousKeywordCount'])} credential/security keywords")
-            heuristic_penalty += min(25, int(features['SuspiciousKeywordCount']) * 8)
+            heuristic_penalty += min(20, int(features['SuspiciousKeywordCount']) * 5)
             
         if features.get('IsSuspiciousTLD', 0) == 1:
             reasons.append("Domain uses a top-level domain (TLD) extension frequently abused in phishing campaigns")
@@ -138,7 +169,10 @@ class PhishGuardRiskEngine:
             reasons.append(f"Isolation Forest flagged structural anomaly (Anomaly Score: {anomaly_score:.2f})")
 
         if not reasons:
-            reasons.append("URL exhibits normal domain structure and legitimate lexical characteristics")
+            if is_verified_domain:
+                reasons.append("Verified high-reputation domain; standard web path and parameter structure")
+            else:
+                reasons.append("URL exhibits normal domain structure and legitimate lexical characteristics")
 
         # 5. Composite Risk Score (0-100 scale, harmonized logic)
         normalized_heuristic = min(100.0, heuristic_penalty)

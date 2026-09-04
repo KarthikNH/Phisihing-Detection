@@ -97,18 +97,24 @@ body {
   font-weight: 800;
   line-height: 0.95;
   text-align: center;
+  margin-left: auto;
+  margin-right: auto;
   width: 100%;
+  max-width: 100%;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .editorial-sub {
   font-family: 'Space Grotesk', sans-serif;
   letter-spacing: 0.25em;
   text-transform: uppercase;
+  text-align: center;
 }
 
 /* Geometric Radial Radar Visualizer */
 .radar-ring {
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 50%;
   position: absolute;
   top: 50%;
@@ -118,8 +124,8 @@ body {
 }
 
 .radar-ring-glow {
-  border: 1px solid rgba(0, 240, 255, 0.12);
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.04);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.12);
 }
 
 @keyframes slowRotate {

@@ -130,8 +130,9 @@ def extract_url_features(url: str) -> dict:
     no_of_qmark = url_norm.count('?')
     no_of_ampersand = url_norm.count('&')
     
-    # Obfuscation
-    obfuscated_chars = len(re.findall(r'%[0-9a-fA-F]{2}|@', url_norm))
+    # Obfuscation: hex percent-encoding or authority credentials masking
+    has_at_symbol = 1 if '@' in parsed.netloc else 0
+    obfuscated_chars = len(re.findall(r'%[0-9a-fA-F]{2}', url_norm)) + (1 if has_at_symbol else 0)
     has_obfuscation = 1 if obfuscated_chars > 0 else 0
     obfuscation_ratio = obfuscated_chars / url_length if url_length > 0 else 0.0
     
@@ -148,18 +149,24 @@ def extract_url_features(url: str) -> dict:
     char_continuation_rate = calculate_char_continuation_rate(domain_clean)
     
     # Additional flags
-    has_at_symbol = 1 if '@' in url_norm else 0
     has_double_slash_path = 1 if '//' in parsed.path else 0
     
     # Suspicious TLD detection
     tld_lower = str(tld).lower().lstrip('.')
     is_suspicious_tld = 1 if tld_lower in SUSPICIOUS_TLDS else 0
     
-    # Keyword detection: full URL vs. specifically in domain/subdomain
+    # Keyword detection: match delimited tokens rather than accidental substrings
+    # (e.g. 'security' inside 'cybersecurity' shouldn't falsely trigger)
     url_lower = url_norm.lower()
     domain_lower = domain_clean.lower()
-    suspicious_keyword_count = sum(1 for kw in SUSPICIOUS_KEYWORDS if kw in url_lower)
-    suspicious_keyword_in_domain = sum(1 for kw in SUSPICIOUS_KEYWORDS if kw in domain_lower)
+    suspicious_keyword_in_domain = sum(
+        1 for kw in SUSPICIOUS_KEYWORDS 
+        if re.search(r'(?:^|[-._0-9])' + re.escape(kw) + r'(?:[-._0-9]|$)', domain_lower)
+    )
+    suspicious_keyword_count = sum(
+        1 for kw in SUSPICIOUS_KEYWORDS 
+        if re.search(r'(?:^|[/._?=&%#+ -])' + re.escape(kw) + r'(?:[/._?=&%#+ -]|$)', url_lower)
+    )
     
     features = {
         'URLLength': float(url_length),

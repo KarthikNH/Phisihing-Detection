@@ -3,9 +3,8 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
-  // Use '/Phisihing-Detection/' base only when building for GitHub Pages deployment.
-  // During local dev ('serve'), use '/' so assets load correctly on localhost.
-  base: command === 'build' ? '/Phisihing-Detection/' : '/',
+  // FastAPI serves the production build from the site root.
+  base: '/',
 
   plugins: [react()],
 

@@ -311,37 +311,50 @@ export default function App() {
             {/* HERO SECTION WITH THIN RADIAL GEOMETRIC GRAPHIC */}
             <div className="relative text-center max-w-4xl mx-auto pt-6 pb-4">
               
-              {/* Central Geometric Concentric Circles Backdrop (SCS Inspiration) */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[540px] h-[540px] pointer-events-none -z-10 select-none overflow-hidden">
+              {/* Central Geometric Concentric Circles Backdrop */}
+              <div className="absolute top-[125px] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] pointer-events-none -z-10 select-none overflow-hidden">
                 <div className="radar-ring w-[140px] h-[140px] radar-ring-glow" />
-                <div className="radar-ring w-[280px] h-[280px] border-dashed border-white/[0.06] spin-slow" />
-                <div className="radar-ring w-[420px] h-[420px] border-white/[0.04]" />
-                <div className="radar-ring w-[520px] h-[520px] border-dashed border-cyan-500/10 spin-reverse-slow" />
+                <div className="radar-ring w-[260px] h-[260px] border-dashed border-cyan-400/25 spin-slow" />
+                <div className="radar-ring w-[370px] h-[370px] border-white/[0.08]" />
+                <div className="radar-ring w-[440px] h-[440px] border-dashed border-cyan-500/15 spin-reverse-slow" />
                 {/* Thin Crosshair axes */}
-                <div className="absolute top-0 bottom-0 left-1/2 w-px bg-gradient-to-b from-transparent via-white/[0.05] to-transparent" />
-                <div className="absolute left-0 right-0 top-1/2 h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
+                <div className="absolute top-0 bottom-0 left-1/2 w-px bg-gradient-to-b from-transparent via-cyan-400/25 to-transparent" />
+                <div className="absolute left-0 right-0 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-400/25 to-transparent" />
                 {/* Rotating subtle radar beam */}
                 <div className="radar-beam" />
               </div>
 
+              {/* Main Centre Logo Badge */}
+              <div className="flex justify-center items-center mb-5">
+                <div className="relative group">
+                  <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-cyan-500/40 via-blue-500/30 to-cyan-400/40 blur-md opacity-75 group-hover:opacity-100 transition duration-500" />
+                  <div className="relative w-16 h-16 rounded-2xl bg-[#090d16] border border-cyan-400/40 flex items-center justify-center shadow-2xl shadow-cyan-500/30">
+                    <Shield className="w-8 h-8 text-cyan-400 animate-pulse" />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#040508] border border-cyan-400 flex items-center justify-center">
+                      <Lock className="w-2.5 h-2.5 text-cyan-300" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Tag / Micro-label */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-slate-300 text-[11px] font-mono tracking-widest uppercase mb-6 shadow-sm">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-slate-300 text-[11px] font-mono tracking-widest uppercase mb-5 shadow-sm">
                 <Lock className="w-3 h-3 text-cyan-400" />
                 AUTONOMOUS ZERO-DAY PHISHING RADAR
               </div>
 
-              {/* Oversized Editorial Typography */}
-              <h1 className="editorial-title text-center mx-auto block text-6xl md:text-8xl lg:text-9xl font-black tracking-tight text-white mb-4">
-                PHISHGUARD
+              {/* Responsive Centered Typography */}
+              <h1 className="editorial-title text-center mx-auto block text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-4">
+                PHISH<span className="text-cyan-400">GUARD</span>
               </h1>
 
               {/* Architectural Sub-title */}
-              <p className="editorial-sub text-base md:text-xl font-bold tracking-[0.2em] text-cyan-300 mb-6 uppercase">
+              <p className="editorial-sub text-center mx-auto block text-xs sm:text-sm md:text-base font-bold tracking-[0.25em] text-cyan-300 mb-6 uppercase">
                 "SEE THE THREAT BEFORE IT SEES YOU."
               </p>
 
               {/* Editorial Description */}
-              <p className="text-slate-400 text-sm md:text-base font-sans max-w-2xl mx-auto leading-relaxed mb-8">
+              <p className="text-slate-400 text-sm md:text-base font-sans max-w-2xl mx-auto text-center leading-relaxed mb-8">
                 Enterprise-grade cybersecurity engine combining 24 lexical URL features, XGBoost machine learning classification, and Isolation Forest zero-day anomaly detection.
               </p>
 

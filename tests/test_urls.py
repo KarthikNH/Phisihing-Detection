@@ -136,6 +136,39 @@ def run_regression_tests():
     else:
         print(f"  --> FAIL [X]")
 
+    # 11b. Real-World Long Google Search Query (170+ chars, multiple parameters)
+    total += 1
+    print("\n[TEST 11b] Real-World Long Google Search Query (170+ chars)...")
+    r11b = analyze_url("https://www.google.com/search?q=machine+learning+in+cybersecurity+and+phishing+detection+benchmarks&oq=machine+learning&aqs=chrome..69i57j0i512l9.3401j0j7&sourceid=chrome&ie=UTF-8")
+    print(f"  Prediction : {r11b['prediction']}, Risk: {r11b['risk_level']}, Score: {r11b['risk_score']}, Prob: {r11b['phishing_probability']*100:.1f}%")
+    if r11b['prediction'] == 'Legitimate' and r11b['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 11c. Real-World Long Amazon Product URL with ASIN, ref, and keywords (130+ chars)
+    total += 1
+    print("\n[TEST 11c] Real-World Long Amazon Product URL (130+ chars)...")
+    r11c = analyze_url("https://www.amazon.com/Apple-MacBook-16-inch-512GB-Storage/dp/B08N5M7S6K/ref=sr_1_1?dchild=1&keywords=macbook&qid=1608123456&sr=8-1")
+    print(f"  Prediction : {r11c['prediction']}, Risk: {r11c['risk_level']}, Score: {r11c['risk_score']}, Prob: {r11c['phishing_probability']*100:.1f}%")
+    if r11c['prediction'] == 'Legitimate' and r11c['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 11d. Real-World Long GitHub Commit SHA URL
+    total += 1
+    print("\n[TEST 11d] Real-World Long GitHub Commit SHA URL...")
+    r11d = analyze_url("https://github.com/torvalds/linux/commit/a1b2c3d4e5f67890abcdef1234567890abcdef12")
+    print(f"  Prediction : {r11d['prediction']}, Risk: {r11d['risk_level']}, Score: {r11d['risk_score']}, Prob: {r11d['phishing_probability']*100:.1f}%")
+    if r11d['prediction'] == 'Legitimate' and r11d['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
     # 12. Synthetic Phishing URL 1: Credential Harvester
     total += 1
     print("\n[TEST 12] Synthetic Phishing (http://secure-login-verify-account.example.invalid/login)...")
