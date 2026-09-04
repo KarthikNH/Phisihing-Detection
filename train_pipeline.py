@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from xgboost import XGBClassifier
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
     confusion_matrix, roc_curve
@@ -31,40 +32,44 @@ CYBER_ORANGE = '#ff9900'
 
 def preprocess_and_extract(df_raw, max_samples=100000):
     """
-    Extract features using backend.feature_extractor to guarantee 100% feature consistency
-    between training and live inference.
+    Deduplicate dataset and extract features using backend.feature_extractor to guarantee 
+    100% feature consistency between training and live inference.
     """
-    print(f"Dataset shape: {df_raw.shape}")
+    print(f"Raw dataset shape: {df_raw.shape}")
+    
+    # Drop duplicate URLs to eliminate train/test data leakage
+    df_clean = df_raw.drop_duplicates(subset=['URL']).copy()
+    print(f"Deduplicated dataset shape: {df_clean.shape}")
     
     # Subsample if dataset is larger than max_samples for fast & accurate training
-    if len(df_raw) > max_samples:
+    if len(df_clean) > max_samples:
         print(f"Stratified sampling {max_samples} records for training...")
         _, df_sample = train_test_split(
-            df_raw, test_size=max_samples, stratify=df_raw['label'], random_state=42
+            df_clean, test_size=max_samples, stratify=df_clean['label'], random_state=42
         )
     else:
-        df_sample = df_raw.copy()
+        df_sample = df_clean.copy()
         
-    print("Extracting URL features...")
+    print("Extracting URL features using canonical feature extractor...")
     start_time = time.time()
     
     # Map target: label 0 = Phishing (1), label 1 = Legitimate (0)
     y = (df_sample['label'].values == 0).astype(int)
     
-    # Extract features using our feature_extractor
+    # Extract features using canonical feature_extractor
     urls = df_sample['URL'].astype(str).tolist()
     features_list = [extract_url_features(u) for u in urls]
         
     X_df = pd.DataFrame(features_list)
     feature_names = list(X_df.columns)
     
-    print(f"Feature extraction complete in {time.time() - start_time:.2f}s. Extract shape: {X_df.shape}")
+    print(f"Feature extraction complete in {time.time() - start_time:.2f}s. Matrix shape: {X_df.shape}")
     print(f"Target distribution: Phishing(1)={sum(y==1)}, Legitimate(0)={sum(y==0)}")
     
     return X_df.values, y, feature_names
 
 def train_and_evaluate():
-    print("=== PHISHGUARD ML PIPELINE TRAINING ===")
+    print("=== PHISHGUARD ML PIPELINE TRAINING & CALIBRATION ===")
     data_path = 'data/phishing_dataset.csv'
     if not os.path.exists(data_path):
         data_path = 'data/PhiUSIIL_Phishing_URL_Dataset.csv'
@@ -72,7 +77,7 @@ def train_and_evaluate():
     df_raw = pd.read_csv(data_path)
     X, y, feature_names = preprocess_and_extract(df_raw, max_samples=100000)
     
-    # Train / Test split (80/20)
+    # Stratified Train / Test split (80/20)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -82,37 +87,49 @@ def train_and_evaluate():
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
-    # Save feature names and scaler
     os.makedirs('models', exist_ok=True)
     os.makedirs('results', exist_ok=True)
+    
+    # Save canonical feature config and scaler
+    feature_config = {
+        'feature_names': feature_names,
+        'feature_count': len(feature_names),
+        'scaler_type': 'StandardScaler'
+    }
+    joblib.dump(feature_config, 'models/feature_config.joblib')
     joblib.dump(scaler, 'models/scaler.joblib')
     
-    # 1. Logistic Regression
+    # 1. Logistic Regression Baseline
     print("\nTraining Logistic Regression Baseline...")
     lr = LogisticRegression(max_iter=1000, random_state=42)
     lr.fit(X_train_scaled, y_train)
     lr_preds = lr.predict(X_test_scaled)
     lr_probs = lr.predict_proba(X_test_scaled)[:, 1]
     
-    # 2. Random Forest
+    # 2. Random Forest Classifier
     print("Training Random Forest Classifier...")
     rf = RandomForestClassifier(n_estimators=100, max_depth=15, random_state=42, n_jobs=-1)
-    rf.fit(X_train, y_train) # Tree models work directly on unscaled
+    rf.fit(X_train, y_train)
     rf_preds = rf.predict(X_test)
     rf_probs = rf.predict_proba(X_test)[:, 1]
     
-    # 3. XGBoost Classifier
-    print("Training XGBoost Classifier...")
-    xgb = XGBClassifier(n_estimators=150, max_depth=8, learning_rate=0.1, eval_metric='logloss', random_state=42, n_jobs=-1)
-    xgb.fit(X_train, y_train)
-    xgb_preds = xgb.predict(X_test)
-    xgb_probs = xgb.predict_proba(X_test)[:, 1]
+    # 3. Calibrated XGBoost Classifier
+    print("Training and Calibrating XGBoost Classifier...")
+    base_xgb = XGBClassifier(
+        n_estimators=120, max_depth=6, learning_rate=0.05, 
+        eval_metric='logloss', random_state=42, n_jobs=-1
+    )
+    calibrated_xgb = CalibratedClassifierCV(estimator=base_xgb, method='sigmoid', cv=5)
+    calibrated_xgb.fit(X_train, y_train)
+    
+    xgb_preds = calibrated_xgb.predict(X_test)
+    xgb_probs = calibrated_xgb.predict_proba(X_test)[:, 1]
     
     # Evaluate metrics
     models_dict = {
         'Logistic Regression': (lr, lr_preds, lr_probs, True),
         'Random Forest': (rf, rf_preds, rf_probs, False),
-        'XGBoost': (xgb, xgb_preds, xgb_probs, False)
+        'XGBoost (Calibrated)': (calibrated_xgb, xgb_preds, xgb_probs, False)
     }
     
     metrics_summary = {}
@@ -143,18 +160,21 @@ def train_and_evaluate():
     
     best_model, best_preds, best_probs, is_best_scaled = models_dict[best_model_name]
     
-    # Save individual models and best model
+    # Save primary model artifacts and aliases
+    joblib.dump(calibrated_xgb, 'models/classifier.joblib')
+    joblib.dump(calibrated_xgb, 'models/best_model.joblib') # Backward compatible alias
     joblib.dump(lr, 'models/lr_model.joblib')
     joblib.dump(rf, 'models/rf_model.joblib')
-    joblib.dump(xgb, 'models/xgb_model.joblib')
-    joblib.dump(best_model, 'models/best_model.joblib')
+    joblib.dump(calibrated_xgb, 'models/xgb_model.joblib')
     
     # 4. Anomaly Detection with Isolation Forest (trained on legitimate URL samples)
     print("\nTraining Isolation Forest for URL Anomaly Detection...")
     X_legit_train = X_train[y_train == 0]
     iso = IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1)
     iso.fit(X_legit_train)
-    joblib.dump(iso, 'models/iso_forest.joblib')
+    
+    joblib.dump(iso, 'models/anomaly_detector.joblib')
+    joblib.dump(iso, 'models/iso_forest.joblib') # Backward compatible alias
     
     # Save metadata
     meta = {
@@ -195,7 +215,7 @@ def train_and_evaluate():
     fig, ax = plt.subplots(figsize=(8, 6), facecolor=CYBER_BG)
     ax.set_facecolor(CYBER_BG)
     
-    colors = {'Logistic Regression': CYBER_ORANGE, 'Random Forest': CYBER_GREEN, 'XGBoost': CYBER_CYAN}
+    colors = {'Logistic Regression': CYBER_ORANGE, 'Random Forest': CYBER_GREEN, 'XGBoost (Calibrated)': CYBER_CYAN}
     for name, (model, preds, probs, _) in models_dict.items():
         fpr, tpr, _ = roc_curve(y_test, probs)
         auc_val = metrics_summary[name]['ROC_AUC']
@@ -212,8 +232,15 @@ def train_and_evaluate():
     plt.savefig('results/roc_curve.png', dpi=200, facecolor=CYBER_BG)
     plt.close()
     
-    # 3. Feature Importance Plot (XGBoost / Random Forest)
-    importances = xgb.feature_importances_
+    # 3. Feature Importance Plot (Base Estimator Feature Importances)
+    if hasattr(calibrated_xgb, 'calibrated_classifiers_'):
+        base_model = calibrated_xgb.calibrated_classifiers_[0].estimator
+        importances = base_model.feature_importances_
+    elif hasattr(rf, 'feature_importances_'):
+        importances = rf.feature_importances_
+    else:
+        importances = np.ones(len(feature_names)) / len(feature_names)
+
     indices = np.argsort(importances)[::-1][:12] # Top 12 features
     top_features = [feature_names[i] for i in indices]
     top_importances = importances[indices]
@@ -224,7 +251,7 @@ def train_and_evaluate():
     ax.set_yticks(range(len(indices)))
     ax.set_yticklabels(top_features[::-1], color='white', fontsize=11)
     ax.set_xlabel('Relative Feature Importance Score', color=CYBER_CYAN, fontsize=12)
-    ax.set_title('XGBoost Top URL Feature Importances', color='white', fontsize=14, pad=15)
+    ax.set_title('Top URL Feature Importances', color='white', fontsize=14, pad=15)
     ax.grid(True, color='#222233', linestyle=':', alpha=0.6, axis='x')
     ax.tick_params(colors='white')
     plt.tight_layout()
@@ -250,7 +277,8 @@ def train_and_evaluate():
     plt.savefig('results/anomaly_visual.png', dpi=200, facecolor=CYBER_BG)
     plt.close()
     
-    print("\nTraining and visualization generation completed successfully!")
+    print("\nTraining, calibration, and visualization generation completed successfully!")
 
 if __name__ == '__main__':
     train_and_evaluate()
+

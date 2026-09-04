@@ -1,5 +1,5 @@
 {
-  "best_model": "XGBoost",
+  "best_model": "XGBoost (Calibrated)",
   "feature_names": [
     "URLLength",
     "DomainLength",
@@ -28,25 +28,25 @@
   ],
   "metrics": {
     "Logistic Regression": {
-      "Accuracy": 0.9932,
-      "Precision": 0.9989,
-      "Recall": 0.9853,
-      "F1_Score": 0.9921,
-      "ROC_AUC": 0.9964
+      "Accuracy": 0.9841,
+      "Precision": 0.9963,
+      "Recall": 0.9664,
+      "F1_Score": 0.9811,
+      "ROC_AUC": 0.988
     },
     "Random Forest": {
-      "Accuracy": 0.9958,
-      "Precision": 0.9989,
-      "Recall": 0.9912,
-      "F1_Score": 0.9951,
-      "ROC_AUC": 0.9984
+      "Accuracy": 0.9853,
+      "Precision": 0.996,
+      "Recall": 0.9694,
+      "F1_Score": 0.9826,
+      "ROC_AUC": 0.9922
     },
-    "XGBoost": {
-      "Accuracy": 0.9969,
-      "Precision": 0.9996,
-      "Recall": 0.993,
-      "F1_Score": 0.9963,
-      "ROC_AUC": 0.9984
+    "XGBoost (Calibrated)": {
+      "Accuracy": 0.9861,
+      "Precision": 0.9971,
+      "Recall": 0.9704,
+      "F1_Score": 0.9836,
+      "ROC_AUC": 0.9926
     }
   },
   "dataset_total_samples": 235795,

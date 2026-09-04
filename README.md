@@ -67,9 +67,9 @@ The dataset was split into **80% Training (80,000 samples)** and **20% Stratifie
 
 | Model Architecture | Accuracy | Precision | Recall | F1 Score | ROC-AUC | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **XGBoost Classifier** | **99.69%** | **99.96%** | **99.30%** | **99.63%** | **0.9984** | **SELECTED BEST** |
-| **Random Forest** | 99.58% | 99.89% | 99.12% | 99.51% | 0.9984 | Model Saved |
-| **Logistic Regression** | 99.32% | 99.89% | 98.53% | 99.21% | 0.9964 | Baseline |
+| **XGBoost (Calibrated)** | **98.61%** | **99.71%** | **97.04%** | **98.36%** | **0.9926** | **SELECTED BEST** |
+| **Random Forest** | 98.53% | 99.60% | 96.94% | 98.26% | 0.9922 | Saved Baseline |
+| **Logistic Regression** | 98.41% | 99.63% | 96.64% | 98.11% | 0.9880 | Baseline |
 
 ### Anomaly Detection (Isolation Forest)
 - **Model**: `IsolationForest(n_estimators=100, contamination=0.05)`

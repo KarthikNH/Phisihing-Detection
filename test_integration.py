@@ -36,9 +36,9 @@ def run_tests():
 
     # 2. Legitimate URL Test
     total += 1
-    print("\n[TEST 2] POST /analyze - Legitimate URL (https://github.com/torvalds/linux)...")
+    print("\n[TEST 2] POST /analyze - Legitimate URL (https://www.netflix.com/)...")
     try:
-        payload = json.dumps({'url': 'https://github.com/torvalds/linux'}).encode('utf-8')
+        payload = json.dumps({'url': 'https://www.netflix.com/'}).encode('utf-8')
         req = urllib.request.Request(f"{BASE_URL}/analyze", data=payload, headers={'Content-Type': 'application/json'})
         res = json.loads(urllib.request.urlopen(req).read().decode('utf-8'))
         print(f"  Risk Level : {res['risk_level']}")

@@ -11,7 +11,7 @@ except ImportError:
 SUSPICIOUS_KEYWORDS = [
     'login', 'verify', 'update', 'account', 'banking', 'secure', 'webscr', 
     'paypal', 'ebay', 'signin', 'admin', 'credential', 'free', 'token', 
-    'bonus', 'service', 'wallet', 'security', 'support', 'verify', 'confirm',
+    'bonus', 'service', 'wallet', 'security', 'support', 'confirm',
     'password', 'billing', 'online', 'auth', 'access'
 ]
 
@@ -43,36 +43,35 @@ def parse_domain_info(domain_clean: str):
         try:
             ext = tldextract.extract(domain_clean)
             tld = ext.suffix or ''
-            # In dataset, standard domains (www.example.com) have NoOfSubDomain = 1.0 (counting www as 1)
-            # If user enters example.com without www, count main domain level appropriately.
             subdomain_str = ext.subdomain
-            if not subdomain_str:
-                subdomains = ['www'] # Match dataset convention for standard root domains
+            if not subdomain_str or subdomain_str == 'www':
+                no_of_subdomain = 1.0
             else:
                 subdomains = subdomain_str.split('.')
-            return tld, len(tld), len(subdomains)
+                no_of_subdomain = float(len(subdomains))
+            return tld, len(tld), no_of_subdomain
         except Exception:
             pass
             
     # Fallback splitting by dot
     parts = domain_clean.split('.')
     if len(parts) <= 1:
-        return '', 0, 1
+        return '', 0, 1.0
     tld = parts[-1]
     subdomains = parts[:-2] if len(parts) > 2 else ['www']
-    return tld, len(tld), len(subdomains)
+    return tld, len(tld), float(len(subdomains))
 
 def extract_url_features(url: str) -> dict:
     """
-    Extract lexical, structural, and statistical features from a raw URL string.
-    Works robustly with or without http/https protocol prefix.
+    Extract canonical 24 lexical, structural, and statistical features from a raw URL string.
+    Guarantees 100% consistency between model training and live inference.
     """
     url_str = str(url).strip()
     if not url_str:
         url_str = "https://unknown.com"
         
     # Ensure scheme for urlparse if missing
-    if not re.match(r'^[a-zA-Z]+://', url_str):
+    if not re.match(r'^[a-zA-Z]+://', url_str, re.IGNORECASE):
         parse_target = 'https://' + url_str
         is_https = 1
     else:
@@ -80,10 +79,21 @@ def extract_url_features(url: str) -> dict:
         is_https = 1 if url_str.lower().startswith('https://') else 0
 
     parsed = urlparse(parse_target)
-    domain_full = parsed.netloc or parsed.path.split('/')[0]
-    
-    # Remove port if present for domain analysis
+    domain_full = (parsed.netloc or parsed.path.split('/')[0]).lower()
     domain_clean = domain_full.split(':')[0]
+    
+    # Normalize 2-part root domain to standard www form (e.g. netflix.com -> www.netflix.com)
+    if not domain_clean.startswith('www.') and domain_clean.count('.') == 1 and not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', domain_clean):
+        domain_clean = 'www.' + domain_clean
+        parse_target = parse_target.replace(domain_full.split(':')[0], domain_clean, 1)
+
+    # Normalize target URL for consistent feature counts (strip trailing slash if root path)
+    url_norm = parse_target
+    if url_norm.endswith('/') and parsed.path in ['', '/'] and not parsed.query:
+        url_norm = url_norm[:-1]
+
+    url_length = len(url_norm)
+    domain_length = len(domain_clean)
     
     # Check IP address usage
     ip_pattern = r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$'
@@ -91,42 +101,37 @@ def extract_url_features(url: str) -> dict:
 
     tld, tld_length, no_of_subdomain = parse_domain_info(domain_clean)
 
-    # Basic counts
-    url_length = len(url_str)
-    domain_length = len(domain_clean)
-    
     # Letters & Digits
-    letters = sum(1 for c in url_str if c.isalpha())
-    digits = sum(1 for c in url_str if c.isdigit())
+    letters = sum(1 for c in url_norm if c.isalpha())
+    digits = sum(1 for c in url_norm if c.isdigit())
     letter_ratio = letters / url_length if url_length > 0 else 0.0
     digit_ratio = digits / url_length if url_length > 0 else 0.0
     
     # Specific characters
-    no_of_equals = url_str.count('=')
-    no_of_qmark = url_str.count('?')
-    no_of_ampersand = url_str.count('&')
+    no_of_equals = url_norm.count('=')
+    no_of_qmark = url_norm.count('?')
+    no_of_ampersand = url_norm.count('&')
     
     # Obfuscation
-    obfuscated_chars = len(re.findall(r'%[0-9a-fA-F]{2}|@', url_str))
+    obfuscated_chars = len(re.findall(r'%[0-9a-fA-F]{2}|@', url_norm))
     has_obfuscation = 1 if obfuscated_chars > 0 else 0
     obfuscation_ratio = obfuscated_chars / url_length if url_length > 0 else 0.0
     
-    # Special characters
-    special_chars = sum(1 for c in url_str if not c.isalnum())
-    other_special = sum(1 for c in url_str if not c.isalnum() and c not in ['/', ':', '.', '?', '=', '&'])
-    special_char_ratio = special_chars / url_length if url_length > 0 else 0.0
+    # Special characters (excluding scheme and standard path delimiters)
+    special_symbols = sum(1 for c in url_norm if not c.isalnum() and c not in ['/', ':', '.'])
+    special_symbol_ratio = special_symbols / url_length if url_length > 0 else 0.0
     
     # Advanced lexical features
-    entropy = calculate_entropy(url_str)
-    char_continuation_rate = calculate_char_continuation_rate(url_str)
+    entropy = calculate_entropy(url_norm)
+    char_continuation_rate = calculate_char_continuation_rate(url_norm)
     
     # Additional flags
-    has_at_symbol = 1 if '@' in url_str else 0
+    has_at_symbol = 1 if '@' in url_norm else 0
     has_double_slash_path = 1 if '//' in parsed.path else 0
     hyphens_in_domain = domain_clean.count('-')
     
     # Keyword detection
-    url_lower = url_str.lower()
+    url_lower = url_norm.lower()
     suspicious_keyword_count = sum(1 for kw in SUSPICIOUS_KEYWORDS if kw in url_lower)
     
     features = {
@@ -145,8 +150,8 @@ def extract_url_features(url: str) -> dict:
         'NoOfEqualsInURL': float(no_of_equals),
         'NoOfQMarkInURL': float(no_of_qmark),
         'NoOfAmpersandInURL': float(no_of_ampersand),
-        'NoOfOtherSpecialCharsInURL': float(other_special),
-        'SpacialCharRatioInURL': float(special_char_ratio),
+        'NoOfOtherSpecialCharsInURL': float(special_symbols),
+        'SpacialCharRatioInURL': float(special_symbol_ratio),
         'IsHTTPS': int(is_https),
         'CharContinuationRate': float(char_continuation_rate),
         'Entropy': float(entropy),
@@ -157,3 +162,4 @@ def extract_url_features(url: str) -> dict:
     }
     
     return features
+
