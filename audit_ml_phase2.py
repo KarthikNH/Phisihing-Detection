@@ -95,7 +95,12 @@ for feat in feature_names:
 
 # 3. Feature importance from XGBoost
 print("\n\n[3] XGBOOST FEATURE IMPORTANCES:")
-importances = model.feature_importances_
+if hasattr(model, 'feature_importances_'):
+    importances = model.feature_importances_
+elif hasattr(model, 'calibrated_classifiers_'):
+    importances = np.mean([clf.estimator.feature_importances_ for clf in model.calibrated_classifiers_], axis=0)
+else:
+    importances = np.zeros(len(feature_names))
 sorted_idx = np.argsort(importances)[::-1]
 for i, idx in enumerate(sorted_idx):
     print(f"  {i+1:>2}. {feature_names[idx]:<30} importance={importances[idx]:.4f}")

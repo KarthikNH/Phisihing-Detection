@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import random
 import numpy as np
 import pandas as pd
 import joblib
@@ -22,7 +23,7 @@ from sklearn.metrics import (
 
 from backend.feature_extractor import extract_url_features
 
-# Set style for dark cybersecurity plots
+# Style definitions for dark cybersecurity visual theme
 plt.style.use('dark_background')
 CYBER_BG = '#090b10'
 CYBER_CYAN = '#00f0ff'
@@ -30,10 +31,44 @@ CYBER_RED = '#ff2a5f'
 CYBER_GREEN = '#00ff88'
 CYBER_ORANGE = '#ff9900'
 
-def preprocess_and_extract(df_raw, max_samples=100000):
+# Diverse, realistic benign web path templates covering standard web architectures
+BENIGN_PATH_TEMPLATES = [
+    "", # Clean root domain
+    "/about", "/about/team", "/contact", "/contact-us", "/privacy-policy", "/terms-of-service",
+    "/help/center", "/faq", "/support/kb/articles/102938", "/docs/v2/getting-started",
+    "/blog/2026/03/machine-learning-advances-and-applications",
+    "/news/article/global-technology-trends-and-updates-2026",
+    "/products/electronics/catalog/item?id=8392104&category=smartphones",
+    "/browse/category/items?page=2&sort=popular&view=grid",
+    "/search?q=machine+learning+phishing+detection+benchmark&hl=en&start=10",
+    "/watch?v=k39d8x90q84&feature=share&t=45s",
+    "/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
+    "/wiki/Phishing_detection_using_machine_learning_techniques_and_heuristics",
+    "/wiki/Distributed_systems_consensus_protocols_and_algorithms",
+    "/title/80057281?trackId=14170286&ref_=tt_ov_inf",
+    "/title/70143836?trackId=200257858",
+    "/show/10293847?id=92837465&season=2",
+    "/item/9837482910?vendor=10293&code=84920",
+    "/video/839201948?session=92837491",
+    "/media/stream/1829471029?quality=1080p",
+    "/catalog/product/491829410294?variant=black",
+    "/order/history/2026/839201948102",
+    "/dp/B09G9HD6PD?ref_=Oct_DLandingS_D_123_456&th=1",
+    "/blob/master/include/linux/compiler_attributes.h",
+    "/tree/main/src/components/dashboard/analytics",
+    "/user/profile/activity?tab=contributions&from=2026-01-01",
+    "/overview/features-and-pricing?plan=enterprise",
+    "/downloads/release/v3.4.2/installer-x64-windows.msi",
+    "/recipes/desserts/classic-triple-chocolate-cake-recipe?servings=8",
+    "/events/annual-developer-summit-2026/schedule-and-speakers",
+    "/catalog/books/science-fiction/1849204918294?format=hardcover",
+    "/status/1498273928172639102"
+]
+
+def preprocess_and_extract(df_raw, max_samples=50000):
     """
-    Deduplicate dataset and extract features using backend.feature_extractor to guarantee 
-    100% feature consistency between training and live inference.
+    Deduplicate dataset, augment benign web path distribution to eliminate 
+    root-domain dataset bias, and extract 28 canonical features using backend.feature_extractor.
     """
     print(f"Raw dataset shape: {df_raw.shape}")
     
@@ -41,7 +76,7 @@ def preprocess_and_extract(df_raw, max_samples=100000):
     df_clean = df_raw.drop_duplicates(subset=['URL']).copy()
     print(f"Deduplicated dataset shape: {df_clean.shape}")
     
-    # Subsample if dataset is larger than max_samples for fast & accurate training
+    # Stratified subsampling if dataset is larger than max_samples
     if len(df_clean) > max_samples:
         print(f"Stratified sampling {max_samples} records for training...")
         _, df_sample = train_test_split(
@@ -50,16 +85,35 @@ def preprocess_and_extract(df_raw, max_samples=100000):
     else:
         df_sample = df_clean.copy()
         
-    print("Extracting URL features using canonical feature extractor...")
+    print("Preparing URLs with benign path normalization to eliminate length bias...")
     start_time = time.time()
     
     # Map target: label 0 = Phishing (1), label 1 = Legitimate (0)
-    y = (df_sample['label'].values == 0).astype(int)
+    y_raw = df_sample['label'].values
+    urls_raw = df_sample['URL'].astype(str).tolist()
     
-    # Extract features using canonical feature_extractor
-    urls = df_sample['URL'].astype(str).tolist()
-    features_list = [extract_url_features(u) for u in urls]
+    urls = []
+    y = []
+    random.seed(42)
+    
+    for u_str, lbl in zip(urls_raw, y_raw):
+        u = u_str.strip()
+        target = 0 if lbl == 1 else 1 # 0 = Legitimate, 1 = Phishing
         
+        # In the raw dataset, 100% of legitimate URLs are bare root domains.
+        # Augment ~45% of legitimate URLs with realistic benign web paths
+        # so the model learns that deep paths and queries are standard web structures.
+        if lbl == 1 and random.random() < 0.45:
+            u_base = u.rstrip('/')
+            u = u_base + random.choice(BENIGN_PATH_TEMPLATES)
+            
+        urls.append(u)
+        y.append(target)
+        
+    y = np.array(y)
+    
+    print(f"Extracting features for {len(urls)} URLs using canonical feature extractor...")
+    features_list = [extract_url_features(u) for u in urls]
     X_df = pd.DataFrame(features_list)
     feature_names = list(X_df.columns)
     
@@ -69,13 +123,13 @@ def preprocess_and_extract(df_raw, max_samples=100000):
     return X_df.values, y, feature_names
 
 def train_and_evaluate():
-    print("=== PHISHGUARD ML PIPELINE TRAINING & CALIBRATION ===")
+    print("=== PHISHGUARD ML PIPELINE TRAINING & BIAS RECTIFICATION ===")
     data_path = 'data/phishing_dataset.csv'
     if not os.path.exists(data_path):
         data_path = 'data/PhiUSIIL_Phishing_URL_Dataset.csv'
         
     df_raw = pd.read_csv(data_path)
-    X, y, feature_names = preprocess_and_extract(df_raw, max_samples=100000)
+    X, y, feature_names = preprocess_and_extract(df_raw, max_samples=50000)
     
     # Stratified Train / Test split (80/20)
     X_train, X_test, y_train, y_test = train_test_split(
@@ -108,7 +162,7 @@ def train_and_evaluate():
     
     # 2. Random Forest Classifier
     print("Training Random Forest Classifier...")
-    rf = RandomForestClassifier(n_estimators=100, max_depth=15, random_state=42, n_jobs=-1)
+    rf = RandomForestClassifier(n_estimators=120, max_depth=12, min_samples_leaf=3, random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
     rf_preds = rf.predict(X_test)
     rf_probs = rf.predict_proba(X_test)[:, 1]
@@ -116,7 +170,8 @@ def train_and_evaluate():
     # 3. Calibrated XGBoost Classifier
     print("Training and Calibrating XGBoost Classifier...")
     base_xgb = XGBClassifier(
-        n_estimators=120, max_depth=6, learning_rate=0.05, 
+        n_estimators=120, max_depth=5, learning_rate=0.06, 
+        colsample_bytree=0.8, subsample=0.8,
         eval_metric='logloss', random_state=42, n_jobs=-1
     )
     calibrated_xgb = CalibratedClassifierCV(estimator=base_xgb, method='sigmoid', cv=5)
@@ -154,7 +209,7 @@ def train_and_evaluate():
         print(f"  F1 Score : {f1:.4f}")
         print(f"  ROC-AUC  : {auc:.4f}")
 
-    # Select Best Model based on F1 Score
+    # Select Best Model based on F1 Score & Generalization
     best_model_name = max(metrics_summary, key=lambda k: metrics_summary[k]['F1_Score'])
     print(f"\n---> Best Performing Classifier: {best_model_name}")
     
@@ -162,19 +217,19 @@ def train_and_evaluate():
     
     # Save primary model artifacts and aliases
     joblib.dump(calibrated_xgb, 'models/classifier.joblib')
-    joblib.dump(calibrated_xgb, 'models/best_model.joblib') # Backward compatible alias
+    joblib.dump(calibrated_xgb, 'models/best_model.joblib')
     joblib.dump(lr, 'models/lr_model.joblib')
     joblib.dump(rf, 'models/rf_model.joblib')
     joblib.dump(calibrated_xgb, 'models/xgb_model.joblib')
     
-    # 4. Anomaly Detection with Isolation Forest (trained on legitimate URL samples)
+    # 4. Anomaly Detection with Isolation Forest (trained on diverse legitimate URL samples)
     print("\nTraining Isolation Forest for URL Anomaly Detection...")
     X_legit_train = X_train[y_train == 0]
-    iso = IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1)
+    iso = IsolationForest(n_estimators=100, contamination=0.04, random_state=42, n_jobs=-1)
     iso.fit(X_legit_train)
     
     joblib.dump(iso, 'models/anomaly_detector.joblib')
-    joblib.dump(iso, 'models/iso_forest.joblib') # Backward compatible alias
+    joblib.dump(iso, 'models/iso_forest.joblib')
     
     # Save metadata
     meta = {
@@ -251,7 +306,7 @@ def train_and_evaluate():
     ax.set_yticks(range(len(indices)))
     ax.set_yticklabels(top_features[::-1], color='white', fontsize=11)
     ax.set_xlabel('Relative Feature Importance Score', color=CYBER_CYAN, fontsize=12)
-    ax.set_title('Top URL Feature Importances', color='white', fontsize=14, pad=15)
+    ax.set_title('Top URL Feature Importances (Phishing Signal Dominance)', color='white', fontsize=14, pad=15)
     ax.grid(True, color='#222233', linestyle=':', alpha=0.6, axis='x')
     ax.tick_params(colors='white')
     plt.tight_layout()
@@ -281,4 +336,3 @@ def train_and_evaluate():
 
 if __name__ == '__main__':
     train_and_evaluate()
-

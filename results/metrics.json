@@ -24,32 +24,36 @@
     "HasAtSymbol",
     "HasDoubleSlashInPath",
     "HyphensInDomain",
-    "SuspiciousKeywordCount"
+    "SuspiciousKeywordCount",
+    "DigitsInDomain",
+    "SuspiciousKeywordInDomain",
+    "IsSuspiciousTLD",
+    "DomainEntropy"
   ],
   "metrics": {
     "Logistic Regression": {
-      "Accuracy": 0.9841,
-      "Precision": 0.9963,
-      "Recall": 0.9664,
-      "F1_Score": 0.9811,
-      "ROC_AUC": 0.988
+      "Accuracy": 0.9167,
+      "Precision": 0.9579,
+      "Recall": 0.842,
+      "F1_Score": 0.8962,
+      "ROC_AUC": 0.9585
     },
     "Random Forest": {
-      "Accuracy": 0.9853,
-      "Precision": 0.996,
-      "Recall": 0.9694,
-      "F1_Score": 0.9826,
-      "ROC_AUC": 0.9922
+      "Accuracy": 0.9421,
+      "Precision": 0.9746,
+      "Recall": 0.8876,
+      "F1_Score": 0.9291,
+      "ROC_AUC": 0.9821
     },
     "XGBoost (Calibrated)": {
-      "Accuracy": 0.9861,
-      "Precision": 0.9971,
-      "Recall": 0.9704,
-      "F1_Score": 0.9836,
-      "ROC_AUC": 0.9926
+      "Accuracy": 0.9437,
+      "Precision": 0.9644,
+      "Recall": 0.9014,
+      "F1_Score": 0.9319,
+      "ROC_AUC": 0.9811
     }
   },
   "dataset_total_samples": 235795,
-  "train_samples": 80000,
-  "test_samples": 20000
+  "train_samples": 40000,
+  "test_samples": 10000
 }

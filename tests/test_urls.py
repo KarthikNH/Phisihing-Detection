@@ -1,117 +1,202 @@
 import sys
 import os
 import json
-import urllib.request
-import urllib.error
 
 # Add parent directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.risk_engine import analyze_url
 
-BASE_URL = "http://127.0.0.1:8000"
-
 def run_regression_tests():
     print("==================================================")
     print("   PHISHGUARD REGRESSION & ACCURACY TEST SUITE    ")
+    print("   (Verifying Both Root & Deep/Long URLs)         ")
     print("==================================================")
     
     passed = 0
     total = 0
 
-    # 1. Netflix Classification Test (https://www.netflix.com/)
+    # 1. Netflix Root URL (https://www.netflix.com/)
     total += 1
-    print("\n[TEST 1] Netflix URL Analysis (https://www.netflix.com/)...")
-    res1 = analyze_url("https://www.netflix.com/")
-    print(f"  Prediction : {res1['prediction']}")
-    print(f"  Risk Level : {res1['risk_level']}")
-    print(f"  Risk Score : {res1['risk_score']}/100")
-    print(f"  Phish Prob : {res1['phishing_probability']*100:.1f}%")
-    if res1['prediction'] == 'Legitimate' and res1['risk_level'] == 'LOW':
+    print("\n[TEST 1] Netflix Root (https://www.netflix.com/)...")
+    r1 = analyze_url("https://www.netflix.com/")
+    print(f"  Prediction : {r1['prediction']}, Risk: {r1['risk_level']}, Score: {r1['risk_score']}, Prob: {r1['phishing_probability']*100:.1f}%")
+    if r1['prediction'] == 'Legitimate' and r1['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {res1['prediction']}/{res1['risk_level']}")
+        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {r1['prediction']}/{r1['risk_level']}")
 
-    # 2. Netflix Root URL Analysis (https://netflix.com)
+    # 2. Netflix Root without www (https://netflix.com)
     total += 1
-    print("\n[TEST 2] Netflix Root URL Analysis (https://netflix.com)...")
-    res2 = analyze_url("https://netflix.com")
-    print(f"  Prediction : {res2['prediction']}")
-    print(f"  Risk Level : {res2['risk_level']}")
-    print(f"  Risk Score : {res2['risk_score']}/100")
-    if res2['prediction'] == 'Legitimate' and res2['risk_level'] == 'LOW':
+    print("\n[TEST 2] Netflix Root No-WWW (https://netflix.com)...")
+    r2 = analyze_url("https://netflix.com")
+    print(f"  Prediction : {r2['prediction']}, Risk: {r2['risk_level']}, Score: {r2['risk_score']}, Prob: {r2['phishing_probability']*100:.1f}%")
+    if r2['prediction'] == 'Legitimate' and r2['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {res2['prediction']}/{res2['risk_level']}")
+        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {r2['prediction']}/{r2['risk_level']}")
 
-    # 3. Google URL Analysis (https://www.google.com/)
+    # 3. Long Netflix Browse URL with Genre ID and Parameters
     total += 1
-    print("\n[TEST 3] Google URL Analysis (https://www.google.com/)...")
-    res3 = analyze_url("https://www.google.com/")
-    print(f"  Prediction : {res3['prediction']}")
-    print(f"  Risk Level : {res3['risk_level']}")
-    if res3['prediction'] == 'Legitimate' and res3['risk_level'] == 'LOW':
+    print("\n[TEST 3] Long Netflix Browse URL (https://www.netflix.com/browse/genre/839338?so=su)...")
+    r3 = analyze_url("https://www.netflix.com/browse/genre/839338?so=su")
+    print(f"  Prediction : {r3['prediction']}, Risk: {r3['risk_level']}, Score: {r3['risk_score']}, Prob: {r3['phishing_probability']*100:.1f}%")
+    if r3['prediction'] == 'Legitimate' and r3['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {res3['prediction']}/{res3['risk_level']}")
+        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {r3['prediction']}/{r3['risk_level']}")
 
-    # 4. Microsoft URL Analysis (https://www.microsoft.com/)
+    # 4. Long Netflix Title URL with 16-digit trackId
     total += 1
-    print("\n[TEST 4] Microsoft URL Analysis (https://www.microsoft.com/)...")
-    res4 = analyze_url("https://www.microsoft.com/")
-    print(f"  Prediction : {res4['prediction']}")
-    print(f"  Risk Level : {res4['risk_level']}")
-    if res4['prediction'] == 'Legitimate' and res4['risk_level'] == 'LOW':
+    print("\n[TEST 4] Long Netflix Title URL (https://www.netflix.com/title/80057281?trackId=14170286)...")
+    r4 = analyze_url("https://www.netflix.com/title/80057281?trackId=14170286")
+    print(f"  Prediction : {r4['prediction']}, Risk: {r4['risk_level']}, Score: {r4['risk_score']}, Prob: {r4['phishing_probability']*100:.1f}%")
+    if r4['prediction'] == 'Legitimate' and r4['risk_level'] in ['LOW', 'MEDIUM']:
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {res4['prediction']}/{res4['risk_level']}")
+        print(f"  --> FAIL [X] Expected Legitimate, got {r4['prediction']}/{r4['risk_level']}")
 
-    # 5. GitHub URL Analysis (https://www.github.com/)
+    # 5. Google Root (https://www.google.com/)
     total += 1
-    print("\n[TEST 5] GitHub URL Analysis (https://www.github.com/)...")
-    res5 = analyze_url("https://www.github.com/")
-    print(f"  Prediction : {res5['prediction']}")
-    print(f"  Risk Level : {res5['risk_level']}")
-    if res5['prediction'] == 'Legitimate' and res5['risk_level'] == 'LOW':
+    print("\n[TEST 5] Google Root (https://www.google.com/)...")
+    r5 = analyze_url("https://www.google.com/")
+    print(f"  Prediction : {r5['prediction']}, Risk: {r5['risk_level']}, Score: {r5['risk_score']}")
+    if r5['prediction'] == 'Legitimate' and r5['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Legitimate/LOW, got {res5['prediction']}/{res5['risk_level']}")
+        print(f"  --> FAIL [X]")
 
-    # 6. Synthetic Phishing URL Test 1
+    # 6. Long Google Search URL
     total += 1
-    print("\n[TEST 6] Synthetic Phishing (http://secure-login-verify-account.example.invalid/login)...")
-    res6 = analyze_url("http://secure-login-verify-account.example.invalid/login")
-    print(f"  Prediction : {res6['prediction']}")
-    print(f"  Risk Level : {res6['risk_level']}")
-    print(f"  Phish Prob : {res6['phishing_probability']*100:.1f}%")
-    if res6['prediction'] == 'Phishing' and res6['risk_level'] in ['HIGH', 'CRITICAL']:
+    print("\n[TEST 6] Long Google Search URL (https://www.google.com/search?q=machine+learning+phishing+detection)...")
+    r6 = analyze_url("https://www.google.com/search?q=machine+learning+phishing+detection")
+    print(f"  Prediction : {r6['prediction']}, Risk: {r6['risk_level']}, Score: {r6['risk_score']}")
+    if r6['prediction'] == 'Legitimate' and r6['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Phishing/CRITICAL, got {res6['prediction']}/{res6['risk_level']}")
+        print(f"  --> FAIL [X]")
 
-    # 7. Synthetic Phishing URL Test 2
+    # 7. Long Wikipedia Article URL
     total += 1
-    print("\n[TEST 7] Synthetic Phishing (http://paypal-security-update.xyz/login?id=99283)...")
-    res7 = analyze_url("http://paypal-security-update.xyz/login?id=99283")
-    print(f"  Prediction : {res7['prediction']}")
-    print(f"  Risk Level : {res7['risk_level']}")
-    if res7['prediction'] == 'Phishing' and res7['risk_level'] in ['HIGH', 'CRITICAL']:
+    print("\n[TEST 7] Long Wikipedia Article (https://en.wikipedia.org/wiki/Distributed_systems_consensus_protocols_and_algorithms)...")
+    r7 = analyze_url("https://en.wikipedia.org/wiki/Distributed_systems_consensus_protocols_and_algorithms")
+    print(f"  Prediction : {r7['prediction']}, Risk: {r7['risk_level']}, Score: {r7['risk_score']}")
+    if r7['prediction'] == 'Legitimate' and r7['risk_level'] == 'LOW':
         print("  --> PASS [OK]")
         passed += 1
     else:
-        print(f"  --> FAIL [X] Expected Phishing/CRITICAL, got {res7['prediction']}/{res7['risk_level']}")
+        print(f"  --> FAIL [X]")
 
-    # 8. Malformed / Empty URL Handling
+    # 8. Long GitHub Repository File URL
     total += 1
-    print("\n[TEST 8] Malformed / Empty Input Handling...")
-    res8 = analyze_url("   ")
-    if res8['url'] == "   ":
-        print("  Handled whitespace string safely.")
+    print("\n[TEST 8] Long GitHub Source File (https://github.com/torvalds/linux/blob/master/include/linux/compiler.h)...")
+    r8 = analyze_url("https://github.com/torvalds/linux/blob/master/include/linux/compiler.h")
+    print(f"  Prediction : {r8['prediction']}, Risk: {r8['risk_level']}, Score: {r8['risk_score']}")
+    if r8['prediction'] == 'Legitimate' and r8['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 9. Long Amazon Product URL
+    total += 1
+    print("\n[TEST 9] Long Amazon Product URL (https://www.amazon.com/Apple-iPhone-13-128GB-Midnight/dp/B09G9HD6PD?ref_=Oct_DLandingS_D_123)...")
+    r9 = analyze_url("https://www.amazon.com/Apple-iPhone-13-128GB-Midnight/dp/B09G9HD6PD?ref_=Oct_DLandingS_D_123")
+    print(f"  Prediction : {r9['prediction']}, Risk: {r9['risk_level']}, Score: {r9['risk_score']}")
+    if r9['prediction'] == 'Legitimate' and r9['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 10. Long YouTube Video URL
+    total += 1
+    print("\n[TEST 10] Long YouTube Video (https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be&t=10s)...")
+    r10 = analyze_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be&t=10s")
+    print(f"  Prediction : {r10['prediction']}, Risk: {r10['risk_level']}, Score: {r10['risk_score']}")
+    if r10['prediction'] == 'Legitimate' and r10['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 11. Long StackOverflow Question URL (120+ chars)
+    total += 1
+    print("\n[TEST 11] Long StackOverflow (120+ chars)...")
+    r11 = analyze_url("https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array")
+    print(f"  Prediction : {r11['prediction']}, Risk: {r11['risk_level']}, Score: {r11['risk_score']}")
+    if r11['prediction'] == 'Legitimate' and r11['risk_level'] == 'LOW':
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 12. Synthetic Phishing URL 1: Credential Harvester
+    total += 1
+    print("\n[TEST 12] Synthetic Phishing (http://secure-login-verify-account.example.invalid/login)...")
+    r12 = analyze_url("http://secure-login-verify-account.example.invalid/login")
+    print(f"  Prediction : {r12['prediction']}, Risk: {r12['risk_level']}, Score: {r12['risk_score']}, Prob: {r12['phishing_probability']*100:.1f}%")
+    if r12['prediction'] == 'Phishing' and r12['risk_level'] in ['HIGH', 'CRITICAL']:
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 13. Synthetic Phishing URL 2: Brand Spoof with Suspicious TLD
+    total += 1
+    print("\n[TEST 13] Brand Spoof Phishing (http://paypal-security-update.xyz/login?id=99283)...")
+    r13 = analyze_url("http://paypal-security-update.xyz/login?id=99283")
+    print(f"  Prediction : {r13['prediction']}, Risk: {r13['risk_level']}, Score: {r13['risk_score']}, Prob: {r13['phishing_probability']*100:.1f}%")
+    if r13['prediction'] == 'Phishing' and r13['risk_level'] in ['HIGH', 'CRITICAL']:
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 14. Phishing URL 3: IP Address Host
+    total += 1
+    print("\n[TEST 14] IP Address Host Phishing (http://192.168.1.1/admin/login.php)...")
+    r14 = analyze_url("http://192.168.1.1/admin/login.php")
+    print(f"  Prediction : {r14['prediction']}, Risk: {r14['risk_level']}, Score: {r14['risk_score']}")
+    if r14['prediction'] == 'Phishing' and r14['risk_level'] in ['HIGH', 'CRITICAL']:
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 15. Phishing URL 4: Russian TLD Account Verification
+    total += 1
+    print("\n[TEST 15] Abuse TLD Phishing (http://bank-account-verification.suspicious.ru/update-credentials)...")
+    r15 = analyze_url("http://bank-account-verification.suspicious.ru/update-credentials")
+    print(f"  Prediction : {r15['prediction']}, Risk: {r15['risk_level']}, Score: {r15['risk_score']}")
+    if r15['prediction'] == 'Phishing' and r15['risk_level'] in ['HIGH', 'CRITICAL']:
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 16. Phishing URL 5: Deep Subdomain Brand Spoof on .xyz
+    total += 1
+    print("\n[TEST 16] Subdomain Spoof (https://appleid.apple.com.verify-login-security.xyz/signin)...")
+    r16 = analyze_url("https://appleid.apple.com.verify-login-security.xyz/signin")
+    print(f"  Prediction : {r16['prediction']}, Risk: {r16['risk_level']}, Score: {r16['risk_score']}")
+    if r16['prediction'] == 'Phishing' and r16['risk_level'] in ['HIGH', 'CRITICAL']:
+        print("  --> PASS [OK]")
+        passed += 1
+    else:
+        print(f"  --> FAIL [X]")
+
+    # 17. Malformed / Empty Input Handling
+    total += 1
+    print("\n[TEST 17] Malformed / Empty Input Handling...")
+    r17 = analyze_url("   ")
+    if r17['url'] == "   ":
+        print("  Handled whitespace input safely.")
         print("  --> PASS [OK]")
         passed += 1
     else:

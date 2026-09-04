@@ -39,7 +39,16 @@ class PhishGuardRiskEngine:
         self.scaler = joblib.load(os.path.join(self.models_dir, 'scaler.joblib'))
         self.classifier = joblib.load(classifier_path)
         self.anomaly_detector = joblib.load(anomaly_path)
-        self.best_model_name = "Calibrated XGBoost"
+        
+        best_name = "Calibrated XGBoost"
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, 'r') as f:
+                    m = json.load(f)
+                    best_name = m.get('best_model', best_name)
+            except Exception:
+                pass
+        self.best_model_name = best_name
 
     def analyze_url(self, url: str) -> dict:
         url_clean = str(url).strip()
@@ -69,49 +78,63 @@ class PhishGuardRiskEngine:
         reasons = []
         heuristic_penalty = 0.0
         
-        if features['IsDomainIP'] == 1:
-            reasons.append("URL uses an IP address instead of a domain name")
+        # A. Critical host & obfuscation checks
+        if features.get('IsDomainIP', 0) == 1:
+            reasons.append("URL uses an IP address instead of a verified domain name")
+            heuristic_penalty += 35
+            
+        if features.get('HasAtSymbol', 0) == 1:
+            reasons.append("URL contains an '@' symbol used to obscure the destination host")
             heuristic_penalty += 30
             
-        if features['HasAtSymbol'] == 1:
-            reasons.append("URL contains an '@' symbol used to obscure real destination host")
-            heuristic_penalty += 25
-            
-        if features['HasObfuscation'] == 1:
-            reasons.append("Hexadecimal or percentage URL obfuscation detected")
+        if features.get('HasObfuscation', 0) == 1:
+            reasons.append("Hexadecimal or percentage URL encoding obfuscation detected")
             heuristic_penalty += 20
             
-        if features['SuspiciousKeywordCount'] > 0:
-            reasons.append(f"Contains {int(features['SuspiciousKeywordCount'])} suspicious credential/security keywords")
-            heuristic_penalty += min(35, int(features['SuspiciousKeywordCount']) * 12)
+        if features.get('HasDoubleSlashInPath', 0) == 1:
+            reasons.append("Contains consecutive slashes ('//') in path used in open redirects")
+            heuristic_penalty += 15
+
+        # B. Domain spoofing & structure checks
+        if features.get('SuspiciousKeywordInDomain', 0) > 0:
+            reasons.append(f"Contains security/credential keyword directly inside domain name ({int(features['SuspiciousKeywordInDomain'])})")
+            heuristic_penalty += 35
+        elif features.get('SuspiciousKeywordCount', 0) > 0:
+            reasons.append(f"Contains {int(features['SuspiciousKeywordCount'])} credential/security keywords")
+            heuristic_penalty += min(25, int(features['SuspiciousKeywordCount']) * 8)
             
-        if features['NoOfSubDomain'] >= 3:
+        if features.get('IsSuspiciousTLD', 0) == 1:
+            reasons.append("Domain uses a top-level domain (TLD) extension frequently abused in phishing campaigns")
+            heuristic_penalty += 20
+            
+        if features.get('NoOfSubDomain', 1) >= 3:
             reasons.append(f"Excessive subdomain depth detected ({int(features['NoOfSubDomain'])} subdomains)")
             heuristic_penalty += 20
             
-        if features['IsHTTPS'] == 0:
+        if features.get('HyphensInDomain', 0) > 1:
+            reasons.append(f"Multiple hyphens in domain ({int(features['HyphensInDomain'])}) commonly used in brand typosquatting")
+            heuristic_penalty += 15
+
+        if features.get('DigitsInDomain', 0) > 2:
+            reasons.append(f"Excessive numeric digits ({int(features['DigitsInDomain'])}) in domain name")
+            heuristic_penalty += 10
+
+        # C. Protocol & entropy checks
+        if features.get('IsHTTPS', 1) == 0:
             reasons.append("Insecure protocol: Connection does not use HTTPS encryption")
             heuristic_penalty += 15
             
-        if features['URLLength'] > 75:
-            reasons.append(f"Unusually long URL structure ({int(features['URLLength'])} characters)")
-            heuristic_penalty += 15
-            
-        if features['Entropy'] > 4.5:
-            reasons.append(f"High character entropy ({features['Entropy']:.2f}) indicating randomized/obfuscated tokens")
+        if features.get('DomainEntropy', 0) > 4.2:
+            reasons.append(f"High domain entropy ({features['DomainEntropy']:.2f}) indicating randomized/algorithmically generated host")
             heuristic_penalty += 15
 
-        if features['HyphensInDomain'] > 1:
-            reasons.append(f"Multiple hyphens in domain ({int(features['HyphensInDomain'])}) commonly used in typosquatting")
-            heuristic_penalty += 15
-
-        # Primary ML Threat Reasons
+        # D. Primary ML Threat Reasons
         if phishing_probability >= 0.85:
             reasons.insert(0, f"Critical ML Threat Flag: Classifier indicates {phishing_probability*100:.1f}% phishing probability")
         elif phishing_probability >= 0.50:
             reasons.insert(0, f"ML Threat Flag: Classifier indicates {phishing_probability*100:.1f}% phishing probability")
             
-        if anomaly_score >= 0.65:
+        if anomaly_score >= 0.70:
             reasons.append(f"Isolation Forest flagged structural anomaly (Anomaly Score: {anomaly_score:.2f})")
 
         if not reasons:
@@ -159,4 +182,3 @@ def get_risk_engine():
 def analyze_url(url: str) -> dict:
     engine = get_risk_engine()
     return engine.analyze_url(url)
-
