@@ -2,9 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  // Required for GitHub Pages project deployment
-  base: '/Phisihing-Detection/',
+export default defineConfig(({ command }) => ({
+  // Use '/Phisihing-Detection/' base only when building for GitHub Pages deployment.
+  // During local dev ('serve'), use '/' so assets load correctly on localhost.
+  base: command === 'build' ? '/Phisihing-Detection/' : '/',
 
   plugins: [react()],
 
@@ -43,5 +44,5 @@ export default defineConfig({
       }
     }
   }
-})
+}))
 

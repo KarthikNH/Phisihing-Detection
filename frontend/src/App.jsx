@@ -331,7 +331,7 @@ export default function App() {
               </div>
 
               {/* Oversized Editorial Typography */}
-              <h1 className="editorial-title text-6xl md:text-8xl lg:text-9xl font-black tracking-tight text-white mb-4">
+              <h1 className="editorial-title text-center mx-auto block text-6xl md:text-8xl lg:text-9xl font-black tracking-tight text-white mb-4">
                 PHISHGUARD
               </h1>
 
