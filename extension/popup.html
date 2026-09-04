@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PHISHGUARD Extension</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+      <div class="brand-title">PHISH<span>GUARD</span></div>
+    </div>
+    <div class="version-tag">v1.0 ML</div>
+  </div>
+
+  <div id="targetUrl" class="url-box">Fetching active tab...</div>
+
+  <div id="loading" class="loading-spinner">
+    ⚡ ANALYZING ACTIVE TAB THREAT...
+  </div>
+
+  <div id="results" style="display: none;">
+    <div class="score-card">
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8492a6;">COMPOSITE RISK INDEX</div>
+      <div id="riskScore" class="score-number">--</div>
+      <div id="riskBadge" class="badge">--</div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-box">
+        <div class="metric-label">ML Phishing Prob</div>
+        <div id="phishProb" class="metric-val">--%</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Anomaly Index</div>
+        <div id="anomalyScore" class="metric-val">--</div>
+      </div>
+    </div>
+
+    <div id="reasonsBox" class="reasons-list">
+      <!-- Injected reasons -->
+    </div>
+
+    <button id="openWeb" class="btn-main">
+      OPEN DETAILED ANALYSIS ↗
+    </button>
+  </div>
+
+  <div id="errorBox" style="display: none; padding: 20px; text-align: center; color: #ff2a5f; font-size: 12px;">
+    Unable to connect to PHISHGUARD backend API (http://localhost:8000). Make sure backend server is running.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

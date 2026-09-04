@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "PHISHGUARD — ML Phishing URL Scanner",
+  "version": "1.0.0",
+  "description": "Real-time ML phishing URL scanner and threat intelligence powered by PHISHGUARD.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PHISHGUARD Scanner"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
