@@ -52,12 +52,24 @@ Instructions:
         
     url = analysis_context.get('url', 'Target URL')
     risk_score = analysis_context.get('risk_score', 0)
-    risk_level = analysis_context.get('risk_level', 'UNKNOWN')
-    phish_prob = analysis_context.get('phishing_probability', 0) * 100
-    anomaly_score = analysis_context.get('anomaly_score', 0)
-    reasons = analysis_context.get('reasons', [])
-    features = analysis_context.get('features', {})
-    prediction_label = analysis_context.get('prediction_label', 'Unknown')
+    risk_level = str(analysis_context.get('risk_level', 'UNKNOWN')).upper()
+    
+    raw_prob = analysis_context.get('phishing_probability', 0)
+    try:
+        phish_prob = float(raw_prob) * 100.0 if float(raw_prob) <= 1.0 else float(raw_prob)
+    except (ValueError, TypeError):
+        phish_prob = 0.0
+        
+    try:
+        anomaly_score = float(analysis_context.get('anomaly_score', 0) or 0)
+    except (ValueError, TypeError):
+        anomaly_score = 0.0
+        
+    reasons = analysis_context.get('reasons', []) or []
+    features = analysis_context.get('features', {}) or {}
+    
+    pred_val = analysis_context.get('prediction_label') or analysis_context.get('prediction') or 'Unknown'
+    prediction_label = str(pred_val).title()
     
     query_lower = user_query.lower()
     

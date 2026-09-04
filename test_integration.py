@@ -3,6 +3,12 @@ import json
 import urllib.request
 import urllib.error
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 BASE_URL = "http://127.0.0.1:8000"
 
 def run_tests():
@@ -38,7 +44,7 @@ def run_tests():
         print(f"  Risk Level : {res['risk_level']}")
         print(f"  Risk Score : {res['risk_score']}/100")
         print(f"  Prediction : {res['prediction_label']}")
-        if res['prediction'] == 0 and res['risk_level'] == 'LOW':
+        if (res['prediction'] in [0, 'Legitimate', 'legitimate'] or res.get('prediction_code') == 0) and res['risk_level'] == 'LOW':
             print("  --> PASS [OK]")
             passed += 1
         else:
@@ -56,7 +62,7 @@ def run_tests():
         print(f"  Risk Level : {res['risk_level']}")
         print(f"  Risk Score : {res['risk_score']}/100")
         print(f"  Reasons    : {res['reasons'][:2]}")
-        if res['prediction'] == 1 and res['risk_level'] in ['HIGH', 'CRITICAL']:
+        if (res['prediction'] in [1, 'Phishing', 'phishing'] or res.get('prediction_code') == 1) and res['risk_level'] in ['HIGH', 'CRITICAL']:
             print("  --> PASS [OK]")
             passed += 1
         else:

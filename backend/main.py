@@ -36,6 +36,15 @@ class ChatRequest(BaseModel):
     query: str
     context: Optional[Dict[str, Any]] = None
 
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "ANALYSIS UNAVAILABLE: Invalid request body. Ensure JSON payload with 'url' string is provided."}
+    )
+
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
@@ -46,6 +55,14 @@ def health_check():
         "models_loaded": models_ready,
         "api_version": "1.0.0"
     }
+
+@app.get("/analyze")
+@app.get("/api/analyze")
+def analyze_get_notice():
+    return JSONResponse(
+        status_code=405,
+        content={"detail": "ANALYSIS UNAVAILABLE: /analyze requires an HTTP POST request with JSON payload: {'url': 'https://example.com'}."}
+    )
 
 @app.post("/analyze")
 @app.post("/api/analyze")
@@ -64,6 +81,14 @@ def analyze_url_endpoint(request: URLAnalysisRequest):
             status_code=500, 
             detail=f"SECURITY ENGINE FAILURE: Analysis could not complete. ({str(e)})"
         )
+
+@app.get("/chat")
+@app.get("/api/chat")
+def chat_get_notice():
+    return JSONResponse(
+        status_code=405,
+        content={"detail": "CHAT UNAVAILABLE: /chat requires an HTTP POST request with JSON query payload."}
+    )
 
 @app.get("/metrics")
 @app.get("/api/metrics")

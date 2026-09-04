@@ -146,10 +146,12 @@ class PhishGuardRiskEngine:
         else:
             risk_level = "LOW"
             
+        prediction_label = 'Phishing' if prediction == 1 else 'Legitimate'
         return {
             'url': url,
-            'prediction': prediction,
-            'prediction_label': 'Phishing' if prediction == 1 else 'Legitimate',
+            'prediction': prediction_label,
+            'prediction_code': prediction,
+            'prediction_label': prediction_label,
             'phishing_probability': round(phishing_probability, 4),
             'anomaly_score': round(anomaly_score, 4),
             'risk_score': risk_score,

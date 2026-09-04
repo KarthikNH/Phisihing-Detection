@@ -19,9 +19,12 @@ export default {
         }
       },
       fontFamily: {
+        syne: ['Syne', 'sans-serif'],
         orbitron: ['Orbitron', 'sans-serif'],
         rajdhani: ['Rajdhani', 'sans-serif'],
-        sans: ['Space Grotesk', 'system-ui', 'sans-serif']
+        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Space Grotesk', 'Plus Jakarta Sans', 'system-ui', 'sans-serif']
       }
     },
   },

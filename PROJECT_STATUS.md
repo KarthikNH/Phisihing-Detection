@@ -1,119 +1,120 @@
-# PHISHGUARD — Final Project Status Report
+# PHISHGUARD — Project Status & Website Remediation Report
 
 **Status Update Date**: September 04, 2026  
-**System Version**: v1.0.0 (Phase 1 & Phase 2 Complete)  
-**Environment**: Production Ready / Local Server Active (`http://127.0.0.1:8000`)  
+**System Version**: v1.0.1 (Production Remediation Complete)  
+**FastAPI Backend**: Active & Operational (`http://127.0.0.1:8000`)  
+**Vite Frontend Dev Server**: Active & Proxied (`http://localhost:3000`)  
+**Production Static Build**: Compiled & Served (`http://127.0.0.1:8000/`)  
+**Chrome Extension**: Manifest V3 Active (Intact & Working)  
 
 ---
 
-## 1. Completed Items Overview
+## 1. Executive Summary & Root Causes Resolved
 
-- [x] **Dataset Preprocessing & Inspection**: Dataset `data/PhiUSIIL_Phishing_URL_Dataset.csv` (235,795 rows) inspected and mapped (`is_phishing = 1 - label`).
-- [x] **URL Feature Engineering**: Extracted 24 numerical lexical, structural, and statistical features in `backend/feature_extractor.py` (Entropy, Obfuscation, Subdomains, TLD, HTTPS, Suspicious Keywords, Digit/Letter Ratios).
-- [x] **Multi-Model ML Training**: Trained Logistic Regression baseline, Random Forest, XGBoost Classifier, and Isolation Forest Anomaly Detector.
-- [x] **Evaluation Metrics**: Calculated Accuracy, Precision, Recall, F1 Score, and ROC-AUC. XGBoost achieved **99.69% Accuracy**, **99.96% Precision**, and **99.63% F1 Score**.
-- [x] **Visual Analytics Persistence**: Generated static high-res visualization plots (`confusion_matrix.png`, `roc_curve.png`, `feature_importance.png`, `anomaly_visual.png`) in `results/`.
-- [x] **Risk Scoring Engine**: Implemented `analyze_url(url)` returning `prediction`, `phishing_probability`, `anomaly_score`, 0–100 `risk_score`, `risk_level` (`LOW`/`MEDIUM`/`HIGH`/`CRITICAL`), `reasons`, and `features`.
-- [x] **FastAPI Backend Services**: Implemented `/analyze`, `/health`, `/metrics`, `/chat` endpoints and static frontend serving.
-- [x] **Cyberpunk Dark Frontend**: Created React + Vite frontend with radial scanning radar visual, circular risk score gauge, extracted feature cards, model intelligence metrics dashboard, and visual plot cards.
-- [x] **PhishGuard AI Chatbot**: Context-aware security analyst with Gemini API support and transparent local rule-based fallback engine.
-- [x] **Chrome Extension (Manifest V3)**: Minimal, non-intrusive extension in `extension/` querying active tab URL and displaying risk analysis popup with "Open Detailed Analysis" button.
-- [x] **Integration Testing**: Passed 100% of integration test suite (`test_integration.py` 6/6 tests passed).
-- [x] **Comprehensive Documentation**: Updated `README.md`, `requirements.txt`, `.gitignore`, and `PROJECT_STATUS.md`.
+1. **URL Analysis "Method Not Allowed" (405)**:
+   - *Root Cause*: The Vite dev server (`vite.config.js`) only had proxy configuration for `/api` and `/static`. Requests to `/analyze` and `/health` were intercepted by Vite's static file handler, rejecting HTTP POST with 405 Method Not Allowed.
+   - *Fix*: Configured comprehensive proxying in `vite.config.js` for `/analyze`, `/health`, `/metrics`, `/chat`, and `/api`. Implemented robust API client fallback in `App.jsx` supporting both relative path routing and direct backend URLs (`http://127.0.0.1:8000`). Enforced strict `/analyze` and `/health` API contract matching the required specification.
 
----
+2. **PHISHGUARD AI "Unable to Process Chat Request"**:
+   - *Root Cause*: Chatbot requests to `/chat` were failing with 405 due to missing dev server proxying, and `xgboost` was missing in Python environment, which caused backend model inference crashes.
+   - *Fix*: Installed `xgboost` binary package in Python runtime. Added proxying for `/chat`. Enhanced `backend/chatbot.py` with resilient context decoding (risk level, score, probability, anomaly score, flagged factors, lexical features), ensuring 100% reliable local rule-based security analyst fallback without requiring any external API key.
 
-## 2. Final System Architecture
-
-```
-                               ┌──────────────────────────────────────────────┐
-                               │             CHROME EXTENSION (V3)            │
-                               │  Popup UI / Active Tab URL Interceptor       │
-                               └──────────────────────┬───────────────────────┘
-                                                      │
-                                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   CYBERPUNK REACT FRONTEND (Vite)                               │
-│  Radial Radar Visual │ Risk Gauge │ Feature Breakdown │ Model Intelligence │ PhishGuard AI Chat  │
-└─────────────────────────────────────────────────────┬───────────────────────────────────────────┘
-                                                      │ HTTP / REST API (port 8000)
-                                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                       FASTAPI BACKEND SERVER                                    │
-│  /analyze                   /health                 /metrics                 /chat              │
-└──────────────┬──────────────────────────────────────────┬───────────────────────────┬───────────┘
-               │                                          │                           │
-               ▼                                          ▼                           ▼
-┌────────────────────────────┐              ┌───────────────────────────┐    ┌────────────────────┐
-│  backend/feature_extractor │              │   backend/risk_engine     │    │  backend/chatbot   │
-│  Extracts 24 Lexical       │              │  ML Prob (60%) +          │    │ Context-Aware AI   │
-│  URL Vectors (< 5ms)       │              │  Anomaly (20%) +          │    │ Security Analyst   │
-└──────────────┬─────────────┘              │  Heuristics (20%)         │    └────────────────────┘
-               │                            └─────────────┬─────────────┘
-               └──────────────────┬───────────────────────┘
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                    TRAINED MODEL ARTIFACTS                                      │
-│  best_model.joblib (XGBoost) │ iso_forest.joblib │ scaler.joblib │ metrics.json / plots        │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+3. **Unstyled / Basic HTML Rendering**:
+   - *Root Cause*: `frontend/node_modules` was uninstalled in the project directory, preventing PostCSS and Tailwind CSS v3 compiler from running. `frontend/dist` was also empty, causing backend static serving to lack stylesheets and bundled scripts.
+   - *Fix*: Installed all Node dependencies, configured Tailwind CSS with modern editorial typography (`Syne`, `Space Grotesk`, `Plus Jakarta Sans`, `JetBrains Mono`), crafted delicate concentric geometric radial security radar lines, large circular SVG risk score gauge, dark glass panels (`--panel-bg`), and responsive layouts inspired by high-end cybersecurity aesthetics (SCS reference). Successfully compiled production build to `frontend/dist`.
 
 ---
 
-## 3. Files Created & Modified Manifest
+## 2. API Contract Compliance Verification
+
+### `POST /analyze`
+- **Request**:
+  ```json
+  {
+    "url": "https://example.com"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "url": "https://example.com",
+    "prediction": "Legitimate",
+    "prediction_code": 0,
+    "prediction_label": "Legitimate",
+    "phishing_probability": 0.0019,
+    "anomaly_score": 0.05,
+    "risk_score": 0.1,
+    "risk_level": "LOW",
+    "reasons": [
+      "Domain 'example.com' exhibits standard baseline parameters"
+    ],
+    "features": {
+      "URLLength": 19.0,
+      "DomainLength": 11.0,
+      "IsDomainIP": 0,
+      "TLDLength": 3.0,
+      "NoOfSubDomain": 1.0,
+      "Entropy": 3.45,
+      "IsHTTPS": 1,
+      "SuspiciousKeywordCount": 0.0
+    },
+    "model_used": "XGBoost"
+  }
+  ```
+
+### `GET /health`
+- **Response**:
+  ```json
+  {
+    "status": "healthy",
+    "models_loaded": true,
+    "api_version": "1.0.0"
+  }
+  ```
+
+---
+
+## 3. Files Modified Manifest
 
 ```
 Phisihing Detection/
-├── data/
-│   └── phishing_dataset.csv
-├── models/
-│   ├── best_model.joblib
-│   ├── rf_model.joblib
-│   ├── lr_model.joblib
-│   ├── xgb_model.joblib
-│   ├── iso_forest.joblib
-│   ├── scaler.joblib
-│   └── metadata.json
-├── results/
-│   ├── confusion_matrix.png
-│   ├── roc_curve.png
-│   ├── feature_importance.png
-│   ├── anomaly_visual.png
-│   └── metrics.json
 ├── backend/
-│   ├── main.py
-│   ├── feature_extractor.py
-│   ├── risk_engine.py
-│   └── chatbot.py
+│   ├── main.py              # Added validation exception handler, GET notices for /analyze & /chat, verified endpoints
+│   ├── risk_engine.py       # Updated analyze_url output schema to include string prediction and prediction_code
+│   └── chatbot.py           # Robust context parsing and authoritative local cybersecurity analyst fallback
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── index.css
-│   │   └── main.jsx
-│   ├── dist/
-│   ├── package.json
-│   └── vite.config.js
-├── extension/
-│   ├── manifest.json
-│   ├── popup.html
-│   ├── popup.css
-│   ├── popup.js
-│   └── icon.png
-├── docs/
-├── train_pipeline.py
-├── test_integration.py
-├── PROJECT_STATUS.md
-├── README.md
-├── requirements.txt
-└── .gitignore
+│   ├── vite.config.js       # Added dev proxy routes for /analyze, /health, /metrics, /chat, /static, /api
+│   ├── index.html           # Added Google Fonts: Syne, Plus Jakarta Sans, JetBrains Mono, Space Grotesk
+│   ├── tailwind.config.js   # Registered Syne, Jakarta, Mono font families and dark cyber color tokens
+│   ├── package.json         # Installed node_modules dependencies
+│   ├── dist/                # Production build generated with compiled CSS and JS chunks
+│   └── src/
+│       ├── index.css        # Editorial cyber styling, geometric concentric radar circles, glass panels
+│       └── App.jsx          # Premium UI layout, circular risk gauge, threat dossier, integrated AI assistant
+├── test_integration.py      # Cross-platform UTF-8 stdout support & multi-format prediction assertion
+├── verify_all.py            # Comprehensive 10-point end-to-end verification test suite
+└── PROJECT_STATUS.md        # Updated remediation status report
 ```
+
+*(Note: The Chrome extension in `extension/` was preserved 100% intact and untouched).*
 
 ---
 
-## 4. Integration Test Results
+## 4. Subsystem Status Summary
 
-Ran `python test_integration.py` against live FastAPI backend:
+| Subsystem | Status | Details |
+| :--- | :--- | :--- |
+| **URL Analysis Engine** | 🟢 ACTIVE | `POST /analyze` returns 24 extracted lexical features, XGBoost prediction, Isolation Forest anomaly score, and composite risk index under 5ms. |
+| **API Health & Endpoints** | 🟢 HEALTHY | `GET /health`, `POST /analyze`, `GET /metrics`, `POST /chat` operational. |
+| **PhishGuard AI Chatbot** | 🟢 ACTIVE | Local security analyst rule engine handles contextual queries ("Why flagged?", "What should I do?", "Explain anomaly score", "Is URL safe?") without requiring API key. |
+| **Frontend UI / UX** | 🟢 PREMIUM | Near-black palette (`#040508`), Syne editorial headlines, thin radial orbital circles, large circular SVG gauge, polished glass cards. |
+| **Chrome Extension (V3)**| 🟢 VERIFIED | Active tab interceptor and popup query `POST /analyze` directly with zero regressions. |
 
+---
+
+## 5. Verification & Test Results
+
+### Suite A: Standard Integration Test (`python test_integration.py`)
 ```
 ==================================================
    PHISHGUARD SYSTEM INTEGRATION TEST SUITE       
@@ -146,7 +147,7 @@ Ran `python test_integration.py` against live FastAPI backend:
 
 [TEST 6] POST /chat - Context-Aware Chatbot...
   Engine Used: PhishGuard Security Analyst (Local Rule Engine)
-  Snippet    : ### Threat Analysis for `http://paypal-security-update.xyz/login` ...
+  Snippet    : ### 🔍 Threat Analysis Breakdown for `http://paypal-security-update.xyz/login` ...
   --> PASS [OK]
 
 ==================================================
@@ -154,40 +155,21 @@ Ran `python test_integration.py` against live FastAPI backend:
 ==================================================
 ```
 
+### Suite B: End-to-End Verification (`python verify_all.py`)
+- [x] `GET http://127.0.0.1:8000/health` -> `status: healthy, models_loaded: True`
+- [x] Legitimate URL `https://www.google.com` -> `LOW RISK (0.1/100)`, Legitimate
+- [x] Known Phishing URL `http://paypal-security-update.xyz/login?id=99283` -> `CRITICAL RISK (87.5/100)`, Phishing
+- [x] Empty input `"   "` -> HTTP 400 Bad Request handled gracefully
+- [x] Malformed input -> Parsed and evaluated safely without 500 error
+- [x] Vite dev proxy `http://localhost:3000/analyze` -> Proxy routing functional
+- [x] Chatbot query: *"Why was this URL flagged?"* -> Detailed breakdown of lexical signals
+- [x] Chatbot query: *"What should I do?"* -> Structured risk-based incident advice
+- [x] Chatbot query: *"Explain the anomaly score"* -> Isolation Forest index interpretation
+- [x] Model intelligence metrics -> Loaded real XGBoost empirical metrics and 4 visualization plots
+- **Result: 10/10 Verification Checks Passed**.
+
 ---
 
-## 5. Remaining Issues
+## 6. Remaining Issues
 
-None. All integration tests, backend endpoints, frontend UI components, risk calculations, chatbot fallback responses, and Manifest V3 extension components are verified and operational.
-
----
-
-## 6. Exact Commands to Run Complete Application
-
-### 1. Install Python Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. (Optional) Run ML Pipeline Training
-```bash
-python train_pipeline.py
-```
-
-### 3. Launch Server & Web Application
-```bash
-python -m uvicorn backend.main:app --port 8000 --host 127.0.0.1
-```
-
-Access Web UI at:
-👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
-
-### 4. Run Integration Verification Test Suite
-```bash
-python test_integration.py
-```
-
-### 5. Load Chrome Extension
-1. Open Google Chrome -> `chrome://extensions`
-2. Enable **Developer Mode** (top-right toggle).
-3. Click **Load Unpacked** -> Select `d:\SIC\Phisihing Detection\extension`.
+- **None**. All three reported problems (Method Not Allowed on analysis, chat request failure, and unstyled UI) are resolved. The ML pipeline, model weights, and Chrome extension remain intact.

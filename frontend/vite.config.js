@@ -7,13 +7,28 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/analyze': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/health': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/metrics': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/chat': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
       '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
       },
       '/static': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true
       }
     }
