@@ -1,9 +1,9 @@
 import os
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
@@ -16,7 +16,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration
+# CORS middleware for local frontend and Chrome Extension
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount generated static visual results
+# Static results mount for visual charts
 os.makedirs("results", exist_ok=True)
 app.mount("/static/results", StaticFiles(directory="results"), name="results")
 
@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
 
 @app.get("/health")
+@app.get("/api/health")
 def health_check():
     meta_path = "models/metadata.json"
     models_ready = os.path.exists(meta_path)
@@ -47,17 +48,25 @@ def health_check():
     }
 
 @app.post("/analyze")
+@app.post("/api/analyze")
 def analyze_url_endpoint(request: URLAnalysisRequest):
     if not request.url or not request.url.strip():
-        raise HTTPException(status_code=400, detail="URL cannot be empty")
+        raise HTTPException(
+            status_code=400, 
+            detail="ANALYSIS UNAVAILABLE: Provided URL input cannot be empty."
+        )
         
     try:
         report = analyze_url(request.url.strip())
         return report
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"SECURITY ENGINE FAILURE: Analysis could not complete. ({str(e)})"
+        )
 
 @app.get("/metrics")
+@app.get("/api/metrics")
 def get_metrics_endpoint():
     meta_path = "results/metrics.json"
     if not os.path.exists(meta_path):
@@ -75,29 +84,39 @@ def get_metrics_endpoint():
         }
         return data
     else:
-        raise HTTPException(status_code=404, detail="Metrics not found. Train model first.")
+        raise HTTPException(status_code=404, detail="METRICS UNAVAILABLE: Model training results not found.")
 
 @app.post("/chat")
+@app.post("/api/chat")
 def chat_endpoint(request: ChatRequest):
     if not request.query or not request.query.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty")
+        raise HTTPException(status_code=400, detail="Query input cannot be empty.")
         
     try:
         response = generate_chatbot_response(request.query, request.context)
         return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PhishGuard AI Assistant temporarily unavailable: {str(e)}")
 
-# Serve frontend build if dist folder exists
+# Mount frontend production build assets
 frontend_dist = os.path.join("frontend", "dist")
 if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
-    
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
     @app.get("/")
+    def serve_index():
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"status": "PHISHGUARD API online"}
+
     @app.get("/{full_path:path}")
-    def serve_frontend(full_path: str = ""):
-        if full_path.startswith("api/") or full_path.startswith("static/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
+    def serve_spa(full_path: str = ""):
+        # Ignore API and static paths
+        if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("assets/"):
+            raise HTTPException(status_code=404, detail="Resource not found")
         index_path = os.path.join(frontend_dist, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path)

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, ShieldCheck, Zap, BarChart3, MessageSquare, AlertTriangle, 
-  ExternalLink, Cpu, Activity, Info, RefreshCw, Send, CheckCircle2, Lock, ArrowRight
+  Cpu, Activity, Info, RefreshCw, Send, Lock, ArrowRight, Compass, HelpCircle, CheckCircle2
 } from 'lucide-react';
 
-// Sample URLs for 1-click test
+// Sample URLs for 1-click testing
 const SAMPLE_URLS = [
-  { label: 'Legitimate Github', url: 'https://github.com/torvalds/linux' },
-  { label: 'Phishing PayPal Spoof', url: 'http://paypal-security-update.xyz/login?id=99283' },
-  { label: 'Suspicious IP Host', url: 'http://192.168.1.1/admin/login' },
-  { label: 'Obfuscated @ Redirect', url: 'http://login.bank.com@secure-verify-update.info/auth' }
+  { label: 'Legitimate (Google)', url: 'https://www.google.com' },
+  { label: 'Legitimate (Github)', url: 'https://github.com/torvalds/linux' },
+  { label: 'Phishing (PayPal Spoof)', url: 'http://paypal-security-update.xyz/login?id=99283' },
+  { label: 'Suspicious (IP Host)', url: 'http://192.168.1.1/admin/login' }
 ];
 
 export default function App() {
@@ -21,15 +21,14 @@ export default function App() {
   const [backendHealth, setBackendHealth] = useState(null);
   const [metricsData, setMetricsData] = useState(null);
 
-  // Chat state
+  // Chatbot drawer state
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'ai', text: 'Greetings Agent. I am PHISHGUARD AI. Enter a URL above to begin threat analysis or ask me any cybersecurity questions.' }
+    { sender: 'ai', text: 'Greetings. I am PHISHGUARD AI. Enter a URL above to perform real-time threat analysis or select a quick prompt below.' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Check health and load metrics on mount
   useEffect(() => {
     fetchHealth();
     fetchMetrics();
@@ -37,7 +36,7 @@ export default function App() {
 
   const fetchHealth = async () => {
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch('/health');
       if (res.ok) {
         const data = await res.json();
         setBackendHealth(data);
@@ -51,49 +50,61 @@ export default function App() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await fetch('/api/metrics');
+      const res = await fetch('/metrics');
       if (res.ok) {
         const data = await res.json();
         setMetricsData(data);
       }
     } catch (e) {
-      console.error('Failed to fetch metrics', e);
+      console.error('Failed to load metrics:', e);
     }
   };
 
   const handleAnalyze = async (targetUrl = urlInput) => {
     const urlToTest = targetUrl || urlInput;
-    if (!urlToTest || !urlToTest.trim()) return;
+    if (!urlToTest || !urlToTest.trim()) {
+      setError('ANALYSIS UNAVAILABLE: Please enter a target URL before scanning.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     setAnalysisResult(null);
 
     try {
-      const res = await fetch('/api/analyze', {
+      // Support both /analyze and /api/analyze cleanly
+      const res = await fetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: urlToTest.trim() })
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Analysis request failed.');
+        let errMessage = 'Security engine could not process URL request.';
+        try {
+          const errData = await res.json();
+          errMessage = errData.detail || errMessage;
+        } catch {
+          if (res.status === 405) {
+            errMessage = 'ANALYSIS UNAVAILABLE: Invalid request method. Check API connectivity.';
+          }
+        }
+        throw new Error(errMessage);
       }
 
       const data = await res.json();
       setAnalysisResult(data);
 
-      // Auto notify chatbot context
+      // Auto update chatbot context message
       setChatMessages(prev => [
         ...prev,
         { 
           sender: 'ai', 
-          text: `Scan complete for \`${data.url}\`. Risk Level: **${data.risk_level}** (${data.risk_score}/100). Ask me anything about this scan.`
+          text: `Analysis complete for \`${data.url}\`. Risk Level: **${data.risk_level}** (${data.risk_score}/100). Ask me why it was flagged or what actions to take.`
         }
       ]);
     } catch (err) {
-      setError(err.message || 'Error connecting to backend server.');
+      setError(err.message || 'Security engine could not be reached. Check that the local API server is running.');
     } finally {
       setLoading(false);
     }
@@ -109,7 +120,7 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,13 +138,13 @@ export default function App() {
       } else {
         setChatMessages(prev => [
           ...prev, 
-          { sender: 'ai', text: 'Unable to process chat request at this time.' }
+          { sender: 'ai', text: 'ASSISTANT UNAVAILABLE: Unable to process chat request at this time. Verify backend connection.' }
         ]);
       }
     } catch {
       setChatMessages(prev => [
         ...prev, 
-        { sender: 'ai', text: 'Error contacting PhishGuard AI service.' }
+        { sender: 'ai', text: 'ASSISTANT UNAVAILABLE: Could not reach PhishGuard AI service.' }
       ]);
     } finally {
       setChatLoading(false);
@@ -150,21 +161,46 @@ export default function App() {
     }
   };
 
+  const getRecommendation = (level) => {
+    switch (level) {
+      case 'CRITICAL':
+      case 'HIGH':
+        return {
+          title: 'IMMEDIATE THREAT DETECTED — DO NOT VISIT LINK',
+          desc: 'High probability of phishing or credential theft. Close tab immediately. Do not submit login passwords or personal information.',
+          type: 'danger'
+        };
+      case 'MEDIUM':
+        return {
+          title: 'EVALUATE CAUTION — SUSPICIOUS PATTERNS',
+          desc: 'Unusual lexical features or non-standard subdomains detected. Verify domain authenticity before proceeding.',
+          type: 'warning'
+        };
+      default:
+        return {
+          title: 'VERIFIED LOW RISK — SAFE TO PROCEED',
+          desc: 'Domain structure matches normal web parameters with no anomaly signals. Always maintain standard HTTPS lock verification.',
+          type: 'safe'
+        };
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col relative pb-20">
-      {/* Top Header */}
-      <header className="border-b border-cyan-500/20 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen flex flex-col relative pb-24 text-slate-100 bg-[#050508]">
+      {/* Header Bar */}
+      <header className="border-b border-cyan-500/20 bg-[#07090e]/90 backdrop-blur-xl sticky top-0 z-40 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/20">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/20">
               <Zap className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <h1 className="font-orbitron text-xl font-black tracking-wider text-white flex items-center gap-2">
                 PHISH<span className="text-cyan-400">GUARD</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-rajdhani border border-cyan-500/30">v1.0 ML</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-rajdhani border border-cyan-500/30 font-bold">v1.0 ML</span>
               </h1>
-              <p className="text-xs text-slate-400 font-rajdhani uppercase tracking-widest">URL Cyber Threat Intelligence Engine</p>
+              <p className="text-[11px] text-slate-400 font-rajdhani uppercase tracking-widest">Cyber threat intelligence engine</p>
             </div>
           </div>
 
@@ -172,159 +208,186 @@ export default function App() {
           <nav className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl">
             <button 
               onClick={() => setActiveTab('scanner')}
-              className={`px-4 py-2 rounded-lg text-sm font-rajdhani font-semibold transition-all flex items-center gap-2 ${
+              className={`px-5 py-2 rounded-lg text-sm font-rajdhani font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'scanner' 
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20' 
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Activity className="w-4 h-4" /> URL Scanner
+              <Activity className="w-4 h-4" /> THREAT SCANNER
             </button>
             <button 
               onClick={() => setActiveTab('intelligence')}
-              className={`px-4 py-2 rounded-lg text-sm font-rajdhani font-semibold transition-all flex items-center gap-2 ${
+              className={`px-5 py-2 rounded-lg text-sm font-rajdhani font-bold transition-all flex items-center gap-2 ${
                 activeTab === 'intelligence' 
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20' 
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Cpu className="w-4 h-4" /> Model Intelligence
+              <Cpu className="w-4 h-4" /> MODEL INTELLIGENCE
             </button>
           </nav>
 
-          {/* System Health Badge */}
+          {/* System Status & Chat Trigger */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs font-rajdhani px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800">
               <span className={`w-2 h-2 rounded-full ${backendHealth?.status === 'healthy' ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50 animate-ping' : 'bg-rose-500'}`} />
-              <span className="text-slate-300">SYSTEM:</span>
+              <span className="text-slate-400">ENGINE:</span>
               <span className={backendHealth?.status === 'healthy' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                {backendHealth?.status === 'healthy' ? 'ONLINE (ML LOADED)' : 'OFFLINE'}
+                {backendHealth?.status === 'healthy' ? 'ONLINE (ML ACTIVE)' : 'OFFLINE'}
               </span>
             </div>
             
             <button 
               onClick={() => setChatOpen(!chatOpen)}
-              className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-all relative"
-              title="PhishGuard AI Assistant"
+              className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-all relative flex items-center gap-2 font-rajdhani font-bold text-xs"
+              title="PHISHGUARD AI Assistant"
             >
-              <MessageSquare className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full border-2 border-slate-950 animate-pulse" />
+              <MessageSquare className="w-4 h-4" />
+              <span>AI ASSISTANT</span>
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 pt-10 w-full flex-grow">
+      <main className="max-w-7xl mx-auto px-6 pt-12 w-full flex-grow">
         {activeTab === 'scanner' && (
-          <div className="space-y-10">
-            {/* Hero Banner */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-rajdhani font-semibold tracking-wider uppercase">
-                <Lock className="w-3.5 h-3.5" /> Next-Gen ML Phishing Detection
-              </div>
-              <h2 className="font-orbitron text-4xl md:text-5xl font-black tracking-tight text-white glow-cyan">
-                REAL-TIME URL THREAT ANALYSIS
-              </h2>
-              <p className="text-slate-400 text-base font-sans">
-                Inspect web links using XGBoost classification, Isolation Forest anomaly scoring, and 20+ lexical feature extractions under 5 milliseconds.
-              </p>
-            </div>
+          <div className="space-y-12">
+            {/* Landing Hero Section */}
+            <div className="relative text-center space-y-6 max-w-4xl mx-auto py-6">
+              
+              {/* Radial Graphic Backdrop */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-            {/* URL Input Box */}
-            <div className="max-w-4xl mx-auto">
-              <div className="cyber-card p-4 md:p-6 space-y-4">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <div className="relative flex-grow">
-                    <input 
-                      type="text" 
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                      placeholder="Paste suspect URL (e.g. http://login-paypal-verify.xyz/account)..."
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-5 py-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all font-mono text-sm"
-                    />
-                    {urlInput && (
-                      <button 
-                        onClick={() => setUrlInput('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
-                      >
-                        CLEAR
-                      </button>
-                    )}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-rajdhani font-bold tracking-widest uppercase">
+                <Lock className="w-3.5 h-3.5" /> ZERO-DAY PHISHING THREAT ENGINE
+              </div>
+
+              <h1 className="font-orbitron text-5xl md:text-7xl font-black tracking-tight text-white glow-cyan">
+                PHISHGUARD
+              </h1>
+
+              <p className="font-orbitron text-lg md:text-2xl font-bold tracking-widest text-cyan-300 uppercase">
+                "SEE THE THREAT BEFORE IT SEES YOU."
+              </p>
+
+              <p className="text-slate-400 text-sm md:text-base font-sans max-w-2xl mx-auto leading-relaxed">
+                Real-time machine learning threat intelligence engine evaluating URL lexical patterns, zero-day domain anomalies, and credential harvesting risks under 5 milliseconds.
+              </p>
+
+              {/* URL Input Box */}
+              <div className="max-w-3xl mx-auto pt-4">
+                <div className="cyber-card p-4 md:p-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <div className="relative flex-grow">
+                      <input 
+                        type="text" 
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                        placeholder="Paste a URL to analyze (e.g. http://paypal-security-update.xyz/login)..."
+                        className="w-full bg-slate-950/90 border border-slate-800 rounded-xl px-5 py-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all font-mono text-sm"
+                      />
+                      {urlInput && (
+                        <button 
+                          onClick={() => setUrlInput('')}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs font-mono"
+                        >
+                          CLEAR
+                        </button>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => handleAnalyze()}
+                      disabled={loading}
+                      className="cyber-btn justify-center text-sm font-orbitron font-bold flex-shrink-0"
+                    >
+                      {loading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" /> SCANNING...
+                        </>
+                      ) : (
+                        <>
+                          ANALYZE THREAT →
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  <button 
-                    onClick={() => handleAnalyze()}
-                    disabled={loading}
-                    className="cyber-btn justify-center text-sm font-orbitron"
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> SCANNING...
-                      </>
-                    ) : (
-                      <>
-                        ANALYZE TARGET <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Sample Chips */}
-                <div className="flex items-center gap-2 flex-wrap pt-2">
-                  <span className="text-xs font-rajdhani text-slate-500 uppercase tracking-wider font-semibold">Quick Samples:</span>
-                  {SAMPLE_URLS.map((sample, idx) => (
-                    <button 
-                      key={idx}
-                      onClick={() => {
-                        setUrlInput(sample.url);
-                        handleAnalyze(sample.url);
-                      }}
-                      className="sample-pill font-mono text-xs"
-                    >
-                      {sample.label}
-                    </button>
-                  ))}
+                  {/* Sample Chips */}
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-wider font-bold">Quick Verification Samples:</span>
+                    {SAMPLE_URLS.map((sample, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => {
+                          setUrlInput(sample.url);
+                          handleAnalyze(sample.url);
+                        }}
+                        className="sample-pill font-mono text-xs"
+                      >
+                        {sample.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Loading Radar Animation State */}
+            {/* Scanning Radar Graphic State */}
             {loading && (
-              <div className="cyber-card p-12 max-w-xl mx-auto text-center space-y-6">
-                <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
+              <div className="cyber-card p-12 max-w-xl mx-auto text-center space-y-6 my-8">
+                <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
                   <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 scanner-pulse" />
                   <div className="absolute inset-2 rounded-full border border-dashed border-cyan-500/40 radar-spinner" />
-                  <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-400/50 flex items-center justify-center text-cyan-400">
-                    <Zap className="w-8 h-8 animate-bounce" />
+                  <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-400/50 flex items-center justify-center text-cyan-400">
+                    <Zap className="w-10 h-10 animate-bounce" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-orbitron text-lg font-bold text-white tracking-wider">NEURAL SCAN IN PROGRESS</h3>
-                  <p className="text-xs font-rajdhani text-cyan-400 animate-pulse">Extracting 24 URL lexical vectors & calculating Isolation Forest anomaly score...</p>
+                  <h3 className="font-orbitron text-xl font-bold text-white tracking-wider">NEURAL THREAT SCAN IN PROGRESS</h3>
+                  <p className="text-xs font-rajdhani text-cyan-400 animate-pulse uppercase tracking-widest">
+                    Extracting 24 URL lexical vectors & calculating Isolation Forest anomaly score...
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Polished Error State */}
             {error && (
-              <div className="max-w-2xl mx-auto p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 flex-shrink-0 text-rose-400" />
-                <span className="text-sm font-sans">{error}</span>
+              <div className="max-w-2xl mx-auto p-5 rounded-2xl bg-rose-950/50 border border-rose-500/50 text-rose-200 space-y-2 shadow-xl shadow-rose-950/40">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-rose-400 flex-shrink-0" />
+                  <h4 className="font-orbitron font-bold text-rose-300 text-sm tracking-wider">ANALYSIS UNAVAILABLE</h4>
+                </div>
+                <p className="text-xs text-rose-200/90 font-sans pl-9">{error}</p>
               </div>
             )}
 
-            {/* Analysis Result View */}
+            {/* Analysis Results View */}
             {analysisResult && !loading && (
               <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Top Summary Cards */}
+                
+                {/* Section Header */}
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-cyan-400" />
+                    <h3 className="font-orbitron text-lg font-bold text-white tracking-wider">TARGET SCAN ANALYSIS REPORT</h3>
+                  </div>
+                  <span className="font-mono text-xs text-slate-400">{analysisResult.url}</span>
+                </div>
+
+                {/* Score & Gauge Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  {/* Gauge Risk Score Card */}
+                  
+                  {/* Radial Score Gauge Card */}
                   <div className="cyber-card p-6 flex flex-col items-center justify-center text-center space-y-3">
-                    <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-semibold">Composite Risk Score</span>
+                    <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-bold">Composite Risk Index</span>
                     
-                    <div className="relative w-32 h-32 flex items-center justify-center">
+                    <div className="relative w-36 h-36 flex items-center justify-center">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.08)" strokeWidth="8" fill="transparent" />
                         <circle 
@@ -339,8 +402,8 @@ export default function App() {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="font-orbitron text-3xl font-black text-white">{analysisResult.risk_score}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">/ 100</span>
+                        <span className="font-orbitron text-4xl font-black text-white">{analysisResult.risk_score}</span>
+                        <span className="text-[11px] text-slate-400 font-mono">/ 100</span>
                       </div>
                     </div>
 
@@ -352,14 +415,14 @@ export default function App() {
                   {/* ML Phishing Probability */}
                   <div className="cyber-card p-6 flex flex-col justify-between">
                     <div>
-                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-semibold">ML Phishing Probability</span>
-                      <h3 className="font-orbitron text-3xl font-bold text-white mt-2">
+                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-bold">Phishing Probability</span>
+                      <h3 className="font-orbitron text-4xl font-bold text-white mt-3">
                         {(analysisResult.phishing_probability * 100).toFixed(1)}%
                       </h3>
                       <p className="text-xs text-slate-400 mt-1 font-mono">Classifier: {analysisResult.model_used}</p>
                     </div>
 
-                    <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800 mt-4">
+                    <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800 mt-4">
                       <div 
                         className={`h-full transition-all duration-1000 ${analysisResult.phishing_probability >= 0.5 ? 'bg-rose-500' : 'bg-emerald-400'}`}
                         style={{ width: `${analysisResult.phishing_probability * 100}%` }}
@@ -367,17 +430,17 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Isolation Forest Anomaly Index */}
+                  {/* Isolation Forest Anomaly Score */}
                   <div className="cyber-card p-6 flex flex-col justify-between">
                     <div>
-                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-semibold">Anomaly Index</span>
-                      <h3 className="font-orbitron text-3xl font-bold text-cyan-400 mt-2">
+                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-bold">Anomaly Score</span>
+                      <h3 className="font-orbitron text-4xl font-bold text-cyan-400 mt-3">
                         {analysisResult.anomaly_score.toFixed(2)}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-1 font-mono">Isolation Forest Model</p>
+                      <p className="text-xs text-slate-400 mt-1 font-mono">Isolation Forest Index</p>
                     </div>
 
-                    <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800 mt-4">
+                    <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800 mt-4">
                       <div 
                         className="h-full bg-cyan-400 transition-all duration-1000"
                         style={{ width: `${analysisResult.anomaly_score * 100}%` }}
@@ -385,54 +448,74 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Model Verdict Card */}
+                  {/* Classification Result Card */}
                   <div className="cyber-card p-6 flex flex-col justify-between">
                     <div>
-                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-semibold">Target Classification</span>
+                      <span className="text-xs font-rajdhani text-slate-400 uppercase tracking-widest font-bold">Target Classification</span>
                       <div className="flex items-center gap-3 mt-3">
                         {analysisResult.prediction === 1 ? (
-                          <ShieldAlert className="w-8 h-8 text-rose-500" />
+                          <ShieldAlert className="w-9 h-9 text-rose-500 flex-shrink-0" />
                         ) : (
-                          <ShieldCheck className="w-8 h-8 text-emerald-400" />
+                          <ShieldCheck className="w-9 h-9 text-emerald-400 flex-shrink-0" />
                         )}
                         <div>
                           <span className={`font-orbitron text-xl font-bold ${analysisResult.prediction === 1 ? 'text-rose-400' : 'text-emerald-400'}`}>
                             {analysisResult.prediction_label.toUpperCase()}
                           </span>
-                          <p className="text-[11px] text-slate-400">Deterministic ML Output</p>
+                          <p className="text-[11px] text-slate-400">Deterministic Model Output</p>
                         </div>
                       </div>
                     </div>
 
                     <button 
                       onClick={() => setChatOpen(true)}
-                      className="text-xs font-rajdhani text-cyan-400 hover:underline flex items-center gap-1 mt-4"
+                      className="text-xs font-rajdhani font-bold text-cyan-400 hover:underline flex items-center gap-1.5 mt-4"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" /> Ask AI why this link was flagged
+                      <MessageSquare className="w-4 h-4" /> Ask PHISHGUARD AI about this link
                     </button>
                   </div>
                 </div>
 
+                {/* Security Recommendation Alert Box */}
+                {(() => {
+                  const rec = getRecommendation(analysisResult.risk_level);
+                  return (
+                    <div className={`p-5 rounded-2xl border flex items-start gap-4 ${
+                      rec.type === 'danger' ? 'bg-rose-950/40 border-rose-500/40 text-rose-200' :
+                      rec.type === 'warning' ? 'bg-amber-950/40 border-amber-500/40 text-amber-200' :
+                      'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+                    }`}>
+                      {rec.type === 'danger' ? <ShieldAlert className="w-6 h-6 text-rose-400 flex-shrink-0 mt-0.5" /> :
+                       rec.type === 'warning' ? <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" /> :
+                       <ShieldCheck className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-0.5" />}
+                      <div>
+                        <h4 className="font-orbitron font-bold text-sm tracking-wider">{rec.title}</h4>
+                        <p className="text-xs mt-1 opacity-90 font-sans leading-relaxed">{rec.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Flagged Reasons Section */}
                 <div className="cyber-card p-6 space-y-4">
                   <h3 className="font-orbitron text-lg font-bold text-white flex items-center gap-2">
-                    <Info className="w-5 h-5 text-cyan-400" /> THREAT EVALUATION & REASONS
+                    <Info className="w-5 h-5 text-cyan-400" /> WHY THIS URL WAS FLAGGED
                   </h3>
                   
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {analysisResult.reasons.map((reason, idx) => (
                       <div 
                         key={idx}
-                        className="p-3.5 rounded-lg bg-slate-900/90 border border-slate-800/80 flex items-start gap-3 text-sm text-slate-200"
+                        className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-3 text-sm text-slate-200"
                       >
-                        <span className="w-2 h-2 rounded-full bg-cyan-400 mt-2 flex-shrink-0" />
-                        <span>{reason}</span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 mt-1.5 flex-shrink-0 shadow-sm shadow-cyan-400" />
+                        <span className="font-sans leading-relaxed">{reason}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Extracted Features Grid */}
+                {/* Extracted Feature Breakdown Grid */}
                 <div className="cyber-card p-6 space-y-4">
                   <h3 className="font-orbitron text-lg font-bold text-white flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-cyan-400" /> EXTRACTED LEXICAL FEATURES
@@ -449,6 +532,7 @@ export default function App() {
                     <FeatureBox label="Suspicious Keywords" value={analysisResult.features.SuspiciousKeywordCount} highlight={analysisResult.features.SuspiciousKeywordCount > 0} />
                   </div>
                 </div>
+
               </div>
             )}
           </div>
@@ -458,15 +542,15 @@ export default function App() {
         {activeTab === 'intelligence' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="text-center space-y-2">
-              <h2 className="font-orbitron text-3xl font-bold text-white glow-cyan">MODEL INTELLIGENCE & BENCHMARKS</h2>
-              <p className="text-slate-400 text-sm">Trained on 235,795 PhiUSIIL Phishing URL Dataset records with 80/20 stratified validation.</p>
+              <h2 className="font-orbitron text-3xl font-bold text-white glow-cyan">MODEL INTELLIGENCE & EMPIRICAL METRICS</h2>
+              <p className="text-slate-400 text-sm font-sans">Trained on 235,795 PhiUSIIL Phishing URL Dataset records with 80/20 stratified validation.</p>
             </div>
 
             {/* Metrics Comparison Table */}
             {metricsData && (
               <div className="cyber-card p-6 space-y-4">
                 <h3 className="font-orbitron text-lg font-bold text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-cyan-400" /> MODEL PERFORMANCE MATRIX
+                  <Activity className="w-5 h-5 text-cyan-400" /> CLASSIFIER PERFORMANCE MATRIX
                 </h3>
 
                 <div className="overflow-x-auto">
@@ -488,7 +572,7 @@ export default function App() {
                           <td className="p-3 font-orbitron font-bold text-white flex items-center gap-2">
                             {modelName}
                             {modelName === metricsData.best_model && (
-                              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded font-rajdhani">SELECTED BEST</span>
+                              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded font-rajdhani font-bold">SELECTED BEST</span>
                             )}
                           </td>
                           <td className="p-3 font-mono text-slate-200">{(m.Accuracy * 100).toFixed(2)}%</td>
@@ -496,7 +580,7 @@ export default function App() {
                           <td className="p-3 font-mono text-slate-200">{(m.Recall * 100).toFixed(2)}%</td>
                           <td className="p-3 font-mono font-bold text-cyan-400">{(m.F1_Score * 100).toFixed(2)}%</td>
                           <td className="p-3 font-mono text-emerald-400 font-bold">{m.ROC_AUC.toFixed(4)}</td>
-                          <td className="p-3 text-xs font-rajdhani text-slate-400">TRAINED & SAVED</td>
+                          <td className="p-3 text-xs font-rajdhani text-slate-400 font-bold">SAVED MODEL</td>
                         </tr>
                       ))}
                     </tbody>
@@ -505,7 +589,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Embedded Visualization Plots */}
+            {/* Embedded Visual Analytics Plots */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <VisualPlotCard title="Confusion Matrix (Best Model)" imageSrc="/static/results/confusion_matrix.png" />
               <VisualPlotCard title="ROC Curve Comparison" imageSrc="/static/results/roc_curve.png" />
@@ -516,16 +600,16 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating PhishGuard AI Chat Drawer */}
+      {/* PhishGuard AI Chatbot Drawer */}
       {chatOpen && (
-        <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-3rem)] h-[520px] cyber-card flex flex-col z-50 shadow-2xl shadow-cyan-500/20 animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-3rem)] h-[540px] cyber-card flex flex-col z-50 shadow-2xl shadow-cyan-500/20 animate-in slide-in-from-bottom-5 duration-300">
           {/* Chat Header */}
-          <div className="p-4 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-800 bg-[#07090e] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-cyan-400" />
-              <h4 className="font-orbitron text-sm font-bold text-white">PHISHGUARD AI</h4>
+              <h4 className="font-orbitron text-sm font-bold text-white">PHISHGUARD AI ASSISTANT</h4>
             </div>
-            <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white text-xs">
+            <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1">
               ✕
             </button>
           </div>
@@ -534,14 +618,14 @@ export default function App() {
           <div className="flex-grow p-4 overflow-y-auto space-y-3 font-sans text-xs">
             {chatMessages.map((msg, idx) => (
               <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`p-3 rounded-xl max-w-[85%] ${
+                <div className={`p-3.5 rounded-2xl max-w-[88%] ${
                   msg.sender === 'user' 
                     ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-100' 
                     : 'bg-slate-900 border border-slate-800 text-slate-200'
                 }`}>
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                   {msg.engine && (
-                    <div className="text-[10px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-800">
+                    <div className="text-[10px] text-slate-500 font-mono mt-1.5 pt-1 border-t border-slate-800/80">
                       Engine: {msg.engine}
                     </div>
                   )}
@@ -549,24 +633,46 @@ export default function App() {
               </div>
             ))}
             {chatLoading && (
-              <div className="text-cyan-400 font-mono text-[11px] animate-pulse">Analyzing security context...</div>
+              <div className="text-cyan-400 font-mono text-[11px] animate-pulse">Evaluating threat context...</div>
             )}
           </div>
 
+          {/* Quick Prompts */}
+          <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-950 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+            <button 
+              onClick={() => handleSendChat("Why was this URL flagged?")}
+              className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 hover:border-cyan-400 text-slate-300 flex-shrink-0"
+            >
+              Why flagged?
+            </button>
+            <button 
+              onClick={() => handleSendChat("What should I do?")}
+              className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 hover:border-cyan-400 text-slate-300 flex-shrink-0"
+            >
+              What to do?
+            </button>
+            <button 
+              onClick={() => handleSendChat("Explain the anomaly score")}
+              className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 hover:border-cyan-400 text-slate-300 flex-shrink-0"
+            >
+              Anomaly score?
+            </button>
+          </div>
+
           {/* Chat Input */}
-          <div className="p-3 border-t border-slate-800 bg-slate-950/90 flex gap-2">
+          <div className="p-3 border-t border-slate-800 bg-[#07090e] flex gap-2">
             <input 
               type="text" 
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-              placeholder="Ask why flagged, action steps..."
-              className="flex-grow bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 text-xs focus:outline-none focus:border-cyan-400"
+              placeholder="Ask PHISHGUARD AI security advice..."
+              className="flex-grow bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 text-xs focus:outline-none focus:border-cyan-400"
             />
             <button 
               onClick={() => handleSendChat()}
               disabled={chatLoading}
-              className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30"
+              className="p-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 flex-shrink-0"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -579,18 +685,18 @@ export default function App() {
 
 function FeatureBox({ label, value, highlight = false }) {
   return (
-    <div className={`p-3 rounded-lg border text-left ${highlight ? 'bg-rose-950/30 border-rose-500/40 text-rose-300' : 'bg-slate-900/60 border-slate-800/80 text-slate-300'}`}>
-      <div className="text-[11px] text-slate-500 font-rajdhani font-semibold uppercase">{label}</div>
-      <div className="font-mono text-sm font-bold mt-0.5">{value}</div>
+    <div className={`p-3.5 rounded-xl border text-left ${highlight ? 'bg-rose-950/30 border-rose-500/40 text-rose-300' : 'bg-slate-900/60 border-slate-800 text-slate-300'}`}>
+      <div className="text-[11px] text-slate-400 font-rajdhani font-bold uppercase tracking-wider">{label}</div>
+      <div className="font-mono text-sm font-bold mt-1">{value}</div>
     </div>
   );
 }
 
 function VisualPlotCard({ title, imageSrc }) {
   return (
-    <div className="cyber-card p-4 space-y-3">
-      <h4 className="font-orbitron text-sm font-bold text-slate-200">{title}</h4>
-      <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center p-2">
+    <div className="cyber-card p-5 space-y-3">
+      <h4 className="font-orbitron text-sm font-bold text-slate-200 tracking-wider">{title}</h4>
+      <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center p-2">
         <img src={imageSrc} alt={title} className="w-full h-auto object-contain max-h-72" />
       </div>
     </div>
