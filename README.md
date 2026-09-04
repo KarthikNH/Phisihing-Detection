@@ -2,7 +2,7 @@
 
 **Project Theme**: Cybersecurity & Machine Learning Phishing Detection  
 **Team Name**: Team PHISHGUARD  
-**Team Members**: `[Member 1 Name]`, `[Member 2 Name]`, `[Member 3 Name]`  
+**Team Members**: `Karthik NH`, `Varshith Raj B`, `Priyanka J`  
 **Repository & Local Host**: `http://127.0.0.1:8000`  
 
 ---
