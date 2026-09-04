@@ -32,25 +32,25 @@
   ],
   "metrics": {
     "Logistic Regression": {
-      "Accuracy": 0.9167,
-      "Precision": 0.9579,
-      "Recall": 0.842,
-      "F1_Score": 0.8962,
-      "ROC_AUC": 0.9585
+      "Accuracy": 0.9186,
+      "Precision": 0.9596,
+      "Recall": 0.845,
+      "F1_Score": 0.8987,
+      "ROC_AUC": 0.9587
     },
     "Random Forest": {
-      "Accuracy": 0.9421,
-      "Precision": 0.9746,
-      "Recall": 0.8876,
-      "F1_Score": 0.9291,
-      "ROC_AUC": 0.9821
+      "Accuracy": 0.9413,
+      "Precision": 0.976,
+      "Recall": 0.8843,
+      "F1_Score": 0.9279,
+      "ROC_AUC": 0.9813
     },
     "XGBoost (Calibrated)": {
-      "Accuracy": 0.9437,
-      "Precision": 0.9644,
-      "Recall": 0.9014,
-      "F1_Score": 0.9319,
-      "ROC_AUC": 0.9811
+      "Accuracy": 0.9442,
+      "Precision": 0.9649,
+      "Recall": 0.9021,
+      "F1_Score": 0.9325,
+      "ROC_AUC": 0.9807
     }
   },
   "dataset_total_samples": 235795,
