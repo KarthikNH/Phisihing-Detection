@@ -29,11 +29,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build
+      - name: Build React application
         working-directory: frontend
         run: npm run build
         env:
           VITE_API_URL: https://phisihing-detection-rs1l.onrender.com
+
+      - name: Verify build
+        working-directory: frontend
+        run: |
+          echo "Checking build output..."
+          test -f dist/index.html
+          echo "Build successful!"
+          echo "Contents of dist:"
+          ls -la dist
+          echo "Contents of dist/assets:"
+          ls -la dist/assets
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -54,3 +65,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
