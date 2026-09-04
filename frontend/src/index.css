@@ -1,0 +1,188 @@
+:root {
+  --bg-dark: #050508;
+  --panel-bg: rgba(12, 16, 24, 0.75);
+  --panel-border: rgba(0, 240, 255, 0.15);
+  --cyan-primary: #00f0ff;
+  --cyan-glow: rgba(0, 240, 255, 0.4);
+  --red-critical: #ff2a5f;
+  --orange-high: #ff7700;
+  --yellow-medium: #ffcc00;
+  --green-low: #00ff88;
+  --text-main: #e2e8f0;
+  --text-muted: #8492a6;
+  --font-heading: 'Orbitron', sans-serif;
+  --font-sub: 'Rajdhani', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  min-height: 100vh;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+    linear-gradient(to bottom, rgba(5, 5, 8, 0.95), #050508),
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050508;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyan-primary);
+}
+
+/* Glass Panel Styling */
+.cyber-card {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan-primary), transparent);
+  opacity: 0.4;
+}
+
+.cyber-card:hover {
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 12px 40px 0 rgba(0, 240, 255, 0.1);
+}
+
+/* Typography Utility */
+.font-orbitron { font-family: var(--font-heading); }
+.font-rajdhani { font-family: var(--font-sub); }
+
+.glow-cyan {
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+.glow-red {
+  text-shadow: 0 0 12px rgba(255, 42, 95, 0.6);
+}
+
+/* Radar & Scanner Animations */
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseBorder {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.radar-spinner {
+  animation: radarSweep 4s linear infinite;
+}
+
+.scanner-pulse {
+  animation: pulseBorder 2s ease-in-out infinite;
+}
+
+/* Glowing Badges */
+.badge-critical {
+  background: rgba(255, 42, 95, 0.15);
+  color: var(--red-critical);
+  border: 1px solid rgba(255, 42, 95, 0.5);
+  box-shadow: 0 0 15px rgba(255, 42, 95, 0.3);
+}
+
+.badge-high {
+  background: rgba(255, 119, 0, 0.15);
+  color: var(--orange-high);
+  border: 1px solid rgba(255, 119, 0, 0.5);
+  box-shadow: 0 0 15px rgba(255, 119, 0, 0.3);
+}
+
+.badge-medium {
+  background: rgba(255, 204, 0, 0.15);
+  color: var(--yellow-medium);
+  border: 1px solid rgba(255, 204, 0, 0.5);
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+}
+
+.badge-low {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--green-low);
+  border: 1px solid rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+/* Buttons */
+.cyber-btn {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 100, 255, 0.2));
+  border: 1px solid var(--cyan-primary);
+  color: #ffffff;
+  font-family: var(--font-heading);
+  letter-spacing: 1px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cyber-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.4), rgba(0, 150, 255, 0.4));
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.cyber-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Sample URL Pills */
+.sample-pill {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sample-pill:hover {
+  border-color: var(--cyan-primary);
+  color: var(--cyan-primary);
+  background: rgba(0, 240, 255, 0.1);
+}

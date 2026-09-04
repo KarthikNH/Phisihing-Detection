@@ -1,0 +1,55 @@
+{
+  "best_model": "XGBoost",
+  "feature_names": [
+    "URLLength",
+    "DomainLength",
+    "IsDomainIP",
+    "TLDLength",
+    "NoOfSubDomain",
+    "HasObfuscation",
+    "NoOfObfuscatedChar",
+    "ObfuscationRatio",
+    "NoOfLettersInURL",
+    "LetterRatioInURL",
+    "NoOfDegitsInURL",
+    "DegitRatioInURL",
+    "NoOfEqualsInURL",
+    "NoOfQMarkInURL",
+    "NoOfAmpersandInURL",
+    "NoOfOtherSpecialCharsInURL",
+    "SpacialCharRatioInURL",
+    "IsHTTPS",
+    "CharContinuationRate",
+    "Entropy",
+    "HasAtSymbol",
+    "HasDoubleSlashInPath",
+    "HyphensInDomain",
+    "SuspiciousKeywordCount"
+  ],
+  "metrics": {
+    "Logistic Regression": {
+      "Accuracy": 0.9932,
+      "Precision": 0.9989,
+      "Recall": 0.9853,
+      "F1_Score": 0.9921,
+      "ROC_AUC": 0.9964
+    },
+    "Random Forest": {
+      "Accuracy": 0.9958,
+      "Precision": 0.9989,
+      "Recall": 0.9912,
+      "F1_Score": 0.9951,
+      "ROC_AUC": 0.9984
+    },
+    "XGBoost": {
+      "Accuracy": 0.9969,
+      "Precision": 0.9996,
+      "Recall": 0.993,
+      "F1_Score": 0.9963,
+      "ROC_AUC": 0.9984
+    }
+  },
+  "dataset_total_samples": 235795,
+  "train_samples": 80000,
+  "test_samples": 20000
+}
